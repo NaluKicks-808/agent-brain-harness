@@ -1,0 +1,50 @@
+name: ci
+on:
+  push:
+  pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, python: "3.9"}
+          - {os: ubuntu-latest, python: "3.12"}
+          - {os: macos-latest, python: "3.12"}
+          - {os: windows-latest, python: "3.12"}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Launcher round trip (bash)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          D="$(mktemp -d)"
+          bash launchers/linux/harness.sh init "$D" --leads build
+          cd "$D"
+          bash "$GITHUB_WORKSPACE/launchers/linux/harness.sh" launch manager --app mock --headless
+          bash "$GITHUB_WORKSPACE/launchers/linux/harness.sh" launch lead --dept build --app mock --headless
+          bash "$GITHUB_WORKSPACE/launchers/linux/harness.sh" inbox manager | grep "lead summary"
+      - name: Launcher round trip (PowerShell)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $d = Join-Path $env:RUNNER_TEMP 'proj'
+          $l = Join-Path $env:GITHUB_WORKSPACE 'launchers\windows\harness.ps1'
+          & $l init $d --leads build
+          Set-Location $d
+          & $l launch manager --app mock --headless
+          & $l launch lead --dept build --app mock --headless
+          & $l inbox manager | Select-String 'lead summary'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Leak scan
+        run: python scripts/leak_scan.py

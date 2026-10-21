@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {"type": "command", "command": "python3 .harness/hooks/role_card_hook.py"}
+        ]
+      }
+    ]
+  }
+}

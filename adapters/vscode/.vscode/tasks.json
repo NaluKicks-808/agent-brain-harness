@@ -1,0 +1,34 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Harness: Manager",
+      "type": "shell",
+      "command": "python3",
+      "args": ["harness.py", "boot", "manager"],
+      "options": {"cwd": "${input:harnessRepo}"},
+      "problemMatcher": []
+    },
+    {
+      "label": "Harness: Lead",
+      "type": "shell",
+      "command": "python3",
+      "args": ["harness.py", "boot", "lead", "--dept", "${input:dept}"],
+      "options": {"cwd": "${input:harnessRepo}"},
+      "problemMatcher": []
+    },
+    {
+      "label": "Harness: Worker",
+      "type": "shell",
+      "command": "python3",
+      "args": ["harness.py", "boot", "worker", "--job", "${input:job}"],
+      "options": {"cwd": "${input:harnessRepo}"},
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {"id": "harnessRepo", "type": "promptString", "description": "Folder that holds harness.py", "default": "."},
+    {"id": "dept", "type": "promptString", "description": "Department, for example build"},
+    {"id": "job", "type": "promptString", "description": "Job id"}
+  ]
+}

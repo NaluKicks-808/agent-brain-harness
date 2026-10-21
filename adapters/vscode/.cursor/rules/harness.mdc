@@ -1,0 +1,8 @@
+---
+description: Agent harness (Manager, Lead, Worker) rules
+alwaysApply: false
+---
+
+This project may use a Manager, Lead, Worker harness. Protocol: `.harness/PROTOCOL.md`.
+
+If the user says "Read ... BOOT.md and follow it", open that file and follow it exactly. Use the harness command at its top for `send` and `inbox`. Otherwise ignore the harness.
