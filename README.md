@@ -78,6 +78,9 @@ Flag status:
 - `codex`: `codex "<prompt>"` and `codex exec -` (prompt from stdin) checked against `codex --help` and `codex exec --help`.
 - `gemini`: **not verified** (the CLI was not installed when this was written). Check `gemini --help` and edit the entry.
 - Headless agents need permission to run the harness command. Add your own permission flags to the app entry; the harness does not disable safety checks for you.
+- Tested example for headless Claude Code (lead spawns a worker, both report back):
+  `"headless": ["claude", "-p", "--model", "sonnet", "--allowedTools", "Bash(python3:*) Bash(bash:*) Read Write"]`
+- A headless session still loads your own global settings for that app (for Claude Code: `~/.claude/CLAUDE.md` and hooks).
 
 ## Test
 
