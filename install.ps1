@@ -19,9 +19,11 @@ $py = $null
 foreach ($name in @('py', 'python', 'python3')) {
     $cmd = Get-Command $name -ErrorAction SilentlyContinue
     if (-not $cmd) { continue }
-    $probe = if ($name -eq 'py') { @('-3', '-c') } else { @('-c') }
-    & $cmd.Source @probe 'import sys; sys.exit(sys.version_info < (3, 8))' 2>$null
-    if ($LASTEXITCODE -eq 0) { $py = $cmd.Source; $pyArgs = if ($name -eq 'py') { @('-3') } else { @() }; break }
+    # [string[]] keeps a one-item list a list: a bare 'if' result collapses to a string, and splatting a string passes its characters
+    [string[]]$pre = @()
+    if ($name -eq 'py') { $pre = @('-3') }
+    & $cmd.Source @pre -c 'import sys; sys.exit(sys.version_info < (3, 8))' 2>$null
+    if ($LASTEXITCODE -eq 0) { $py = $cmd.Source; $pyArgs = $pre; break }
 }
 if (-not $py) { Fail 'Python 3.8 or newer is missing. Get it: winget install --id Python.Python.3.12 -e   (or python.org, tick "Add to PATH"). Then rerun.' }
 

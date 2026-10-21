@@ -105,6 +105,7 @@ jobs:
           if (Get-ChildItem $h -Recurse -File) { Write-Error 'dry run wrote files'; exit 1 }
           & "$env:GITHUB_WORKSPACE\install.ps1" --yes --claude-hook --no-path
           if ($LASTEXITCODE -ne 0) { exit 1 }
+          if (-not (Test-Path "$h\.agent-brain-harness\manifest.json")) { Write-Error 'install.ps1 installed nothing'; exit 1 }
           python "$env:GITHUB_WORKSPACE\install.py" --source "$env:GITHUB_WORKSPACE" --yes --claude-hook --no-path *> "$h\rerun.txt"
           Get-Content "$h\rerun.txt"
           if (-not (Select-String -Path "$h\rerun.txt" -Pattern 'Nothing to do' -Quiet)) { Write-Error 'rerun was not a no-op'; exit 1 }
