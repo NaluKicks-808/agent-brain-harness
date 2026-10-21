@@ -492,6 +492,12 @@ def uninstall(c):
             else:
                 p.unlink()
                 c.did("removed %s" % p)
+                for d in (p.parent, p.parent.parent):  # only if empty; rmdir refuses otherwise
+                    try:
+                        if d == p.parent or d.name == ".local":
+                            d.rmdir()
+                    except OSError:
+                        pass
         else:
             c.ok("%s already gone" % p)
     c.step("Remove PATH edits")
