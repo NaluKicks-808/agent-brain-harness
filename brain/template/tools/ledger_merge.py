@@ -105,17 +105,27 @@ def resolve(text):
     return "\n".join(out), left
 
 
+def _write(path, text, crlf):
+    # newline="" writes the text as given; plain write_text would turn every \n into \r\n on Windows.
+    with open(str(path), "w", encoding="utf-8", newline="") as f:
+        f.write(text.replace("\n", "\r\n") if crlf else text)
+
+
 def merge(base_path, ours_path, theirs_path):
     p = subprocess.run(["git", "merge-file", "-p", "--diff3", "-L", "ours", "-L", "base", "-L", "theirs",
                         ours_path, base_path, theirs_path], capture_output=True)
     text = p.stdout.decode("utf-8", "replace")
+    # A Windows checkout can hand the driver CRLF lines; markers and rows are matched on LF text,
+    # and the result goes back with the line endings it came with.
+    crlf = "\r\n" in text
+    text = text.replace("\r\n", "\n")
     if p.returncode == 0:
-        Path(ours_path).write_text(text, encoding="utf-8")
+        _write(ours_path, text, crlf)
         return 0
     if p.returncode < 0 or p.returncode > 127:
         return 2
     merged, left = resolve(text)
-    Path(ours_path).write_text(merged, encoding="utf-8")
+    _write(ours_path, merged, crlf)
     return 1 if left else 0
 
 
