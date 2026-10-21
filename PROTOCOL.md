@@ -23,6 +23,7 @@ Run the harness command shown at the top of your BOOT.md.
 - `inbox <slug>` prints and marks your unread messages as read. `--keep` leaves them unread.
 - `spawn worker --job <id> --brief <file>` (leads) runs a worker and returns its report.
 - `status` shows unread counts, jobs, last reports.
+- Brain verbs (when the project has a `wiki/`): `find <terms>`, `agenda`, `close`, `commit "msg" <files>`.
 
 ## Rules
 1. The file message is the floor. Native messaging (if your app has it) is optional extra; always also write the file.
@@ -31,3 +32,11 @@ Run the harness command shown at the top of your BOOT.md.
 4. Do not wait in the foreground for more than about 4 minutes. Run long jobs in the background and check back.
 5. Never put secrets in messages, briefs or reports.
 6. Ask the human only through the Manager.
+
+## Brain
+If the project has a `wiki/` folder it has a second brain. `CLAUDE.md` is its constitution: read it first, then your role card.
+1. Look things up before you ask anyone: `find <terms>` (`tools/deepfind.py` for exact words).
+2. A new fact lands on its wiki page the same session, under the constitution's rules.
+3. What the human owes goes in `wiki/_reminders.md`, the one agenda. Never a TODO file.
+4. Handoffs, inbox and jobs stay in `.harness/`.
+5. Closing ritual before every commit: `close` (runs `tools/lint.py` and `tools/connect.py`), then `commit "msg" <files you edited>` (runs `tools/safe_commit.sh`).
