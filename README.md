@@ -228,7 +228,7 @@ harness gate uninstall ~/code/my-repo
 git push --no-verify                   # skip it once, on purpose
 ```
 
-Which tests run: the one-line command in `.harness/gate-tests` if you wrote one, otherwise a guess (`tests/` runs `python -m unittest discover -s tests`, a `package.json` with a test script runs `npm test`, a Makefile `test:` target runs `make test`). The leak scan runs when `scripts/leak_scan.py` exists; point `AGENT_BRAIN_HARNESS_LEAK_PATTERNS` at a file outside the repo to add your own terms. A pre-push hook that is not ours is never overwritten. The installer asks first (default no), supports `--dry-run`, records the hook in its manifest, and `--uninstall` removes only hooks it installed. On Windows the hook runs under the `sh` that comes with Git for Windows.
+Which tests run: the one-line command in `.harness/gate-tests` if you wrote one, otherwise a guess (pytest when it is installed and the project has a pytest config; else `tests/` runs `python -m unittest discover -s tests`, a `package.json` with a test script runs `npm test`, a Makefile `test:` target runs `make test`). A run that finds zero tests is a failure, not a pass. The leak scan runs when `scripts/leak_scan.py` exists; point `AGENT_BRAIN_HARNESS_LEAK_PATTERNS` at a file outside the repo to add your own terms. A pre-push hook that is not ours is never overwritten. The installer asks first (default no), supports `--dry-run`, records the hook in its manifest, and `--uninstall` removes only hooks it installed. On Windows the hook runs under the `sh` that comes with Git for Windows.
 
 ### Eval gate
 
@@ -242,7 +242,7 @@ python3 evals/eval_gate.py check           # offline; exit 1 = red
 
 - `evals/paths.json` lists, per suite, the model-facing files it covers.
 - `evals/<suite>/cases.jsonl` holds golden cases taken from real failures. Code checks (`contains`, `not_contains`, `regex`, `max_chars`) decide first; one optional judge rule per case is asked of `judge_cmd`.
-- The gate is red when a covered file changed since the last run, a suite never ran, the score is 0 (or under `min_score`), or `daily_call_cap` model calls were passed. The cap is the spend limit.
+- The gate is red when a covered file changed since the last run, a suite never ran, the score is 0 (or under `min_score`), or the last run was cut off by `daily_call_cap`. The cap is the spend limit: `run` stops calling the model once it is reached.
 - `model_cmd` and `judge_cmd` in `evals/config.json` are any command that reads a prompt on standard input and prints the answer, so any LLM app works.
 
 ### Doctor

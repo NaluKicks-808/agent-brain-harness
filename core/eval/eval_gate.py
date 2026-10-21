@@ -18,7 +18,7 @@ A case: {"id": "...", "prompt": "...", "source": "where the real failure was see
          "checks": [{"type": "contains|not_contains|regex|max_chars", "value": ...}], "judge": "one rule, in words"}
 Code checks decide first. The optional judge rule is asked of judge_cmd (stdin: rule + answer; stdout starts PASS or FAIL).
 The gate is red when a covered file changed since the last run, a suite has no result, the score is 0 (or under min_score),
-or the daily call cap was passed.
+or the last run was cut off by the daily call cap (its score covers only some cases).
 """
 import datetime
 import hashlib
@@ -73,12 +73,10 @@ def check():
             problems.append("%s: never run. Run: python3 evals/eval_gate.py run %s" % (suite, suite))
         elif res.get("hash") != digest(suite, files):
             problems.append("%s: a covered file or its cases changed since the last run. Run: python3 evals/eval_gate.py run %s" % (suite, suite))
+        elif res.get("complete") is False:
+            problems.append("%s: the last run was cut off by daily_call_cap, so its score covers only some cases. Raise the cap or run again tomorrow" % suite)
         elif res.get("score", 0) <= 0 or res.get("score", 0) < cfg.get("min_score", 0):
             problems.append("%s: score %s is below the bar (0 is always red)" % (suite, res.get("score")))
-    spend = load(EVALS / "spend.json", {})
-    cap = cfg.get("daily_call_cap")
-    if cap is not None and spend.get("date") == str(datetime.date.today()) and spend.get("calls", 0) > cap:
-        problems.append("spend cap passed: %s calls today, cap %s" % (spend["calls"], cap))
     for p in problems:
         print("eval gate RED: " + p)
     if not problems:
@@ -139,22 +137,25 @@ def run(suite):
         return True
 
     passed, failures = 0, []
-    for case in cases:
-        if not budget():
-            failures.append({"id": case.get("id"), "why": "call cap reached"})
-            continue
-        ok, why = grade(case, call(cfg["model_cmd"], case["prompt"]), cfg, budget)
-        if ok:
-            passed += 1
-        else:
-            failures.append({"id": case.get("id"), "why": why})
+    try:
+        for case in cases:
+            if not budget():
+                failures.append({"id": case.get("id"), "why": "call cap reached"})
+                continue
+            ok, why = grade(case, call(cfg["model_cmd"], case["prompt"]), cfg, budget)
+            if ok:
+                passed += 1
+            else:
+                failures.append({"id": case.get("id"), "why": why})
+    finally:  # calls already made count against the cap even if a command crashed
+        (EVALS / "spend.json").write_text(json.dumps(spend) + "\n", encoding="utf-8")
+    cut = any("call cap" in f["why"] for f in failures)
     score = passed / len(cases) if cases else 0.0
     (EVALS / "results").mkdir(parents=True, exist_ok=True)
     (EVALS / "results" / (suite + ".json")).write_text(json.dumps(
         {"suite": suite, "score": round(score, 4), "passed": passed, "total": len(cases), "failures": failures,
-         "hash": digest(suite, sv[suite]), "ran": datetime.datetime.now().isoformat(timespec="seconds")}, indent=2) + "\n",
+         "complete": not cut, "hash": digest(suite, sv[suite]), "ran": datetime.datetime.now().isoformat(timespec="seconds")}, indent=2) + "\n",
         encoding="utf-8")
-    (EVALS / "spend.json").write_text(json.dumps(spend) + "\n", encoding="utf-8")
     print("%s: %d/%d passed, score %.2f; calls today %d" % (suite, passed, len(cases), score, spend["calls"]))
     for f in failures:
         print("  FAIL %s: %s" % (f["id"], f["why"]))

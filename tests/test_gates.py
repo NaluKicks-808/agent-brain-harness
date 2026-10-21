@@ -105,6 +105,24 @@ class GateTest(unittest.TestCase):
         r = run(["git", "push", "-q", "origin", "HEAD:main"], self.repo, check=False)
         self.assertNotEqual(r.returncode, 0)
 
+    def test_zero_tests_found_blocks(self):
+        h(self.repo, "gate", "install")
+        self.test_file.write_text("def test_x():\n    assert False\n", encoding="utf-8")  # pytest style: unittest finds nothing
+        run(["git", "commit", "-qam", "pytest style"], self.repo)
+        r = run(["git", "push", "-q", "origin", "HEAD:main"], self.repo, check=False)
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_edited_gate_is_backed_up_not_lost(self):
+        h(self.repo, "gate", "install")
+        self.hook().write_text(self.hook().read_text(encoding="utf-8") + "# my edit\n", encoding="utf-8")
+        self.assertIn("updated", h(self.repo, "gate", "install").stdout)
+        bak = self.hook().with_name("pre-push.bak-agent-brain-harness")
+        self.assertIn("# my edit", bak.read_text(encoding="utf-8"))
+        self.hook().write_text(self.hook().read_text(encoding="utf-8") + "# again\n", encoding="utf-8")
+        h(self.repo, "gate", "uninstall")
+        self.assertFalse(self.hook().exists())
+        self.assertIn("# again", bak.read_text(encoding="utf-8"))
+
     def test_leak_scan_failure_blocks(self):
         h(self.repo, "gate", "install")
         (self.repo / "scripts").mkdir()
@@ -142,7 +160,8 @@ class InstallGateTest(unittest.TestCase):
         self.assertFalse(self.hook.exists())
         out = self.install()
         self.assertTrue(self.hook.is_file())
-        self.assertIn(str(self.hook), (self.home / ".agent-brain-harness" / "manifest.json").read_text(encoding="utf-8").replace("\\\\", "\\"))
+        manifest = json.loads((self.home / ".agent-brain-harness" / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual([Path(g["hook"]).resolve() for g in manifest["gates"]], [self.hook.resolve()])
         self.assertIn("Nothing to do", self.install())
         out = run([sys.executable, INSTALL, "--uninstall", "--yes"], self.home, self.env).stdout
         self.assertIn("remove the pre-push gate", out)
@@ -284,6 +303,10 @@ class EvalGateTest(unittest.TestCase):
         res = json.loads((self.proj / "evals" / "results" / "summarizer.json").read_text(encoding="utf-8"))
         self.assertEqual(res["score"], 0)
         self.assertIn("call cap", res["failures"][0]["why"])
+        self.assertIs(res["complete"], False)
+        r = self.py("check")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("cut off", r.stdout)
 
     def test_pre_push_runs_the_eval_gate(self):
         if not GIT:

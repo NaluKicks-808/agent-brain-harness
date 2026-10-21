@@ -584,6 +584,8 @@ def gate_install(repo, dry=False):
         return "same", dst
     if not dry:
         dst.parent.mkdir(parents=True, exist_ok=True)
+        if state == "ours-old":  # may hold the user's edits
+            shutil.copy2(str(dst), str(dst.with_name(dst.name + ".bak-agent-brain-harness")))
         dst.write_bytes(gate_template())
         os.chmod(str(dst), 0o755)
     return ("created" if state == "none" else "updated"), dst
@@ -593,7 +595,10 @@ def gate_uninstall(repo, dry=False):
     state, dst = gate_state(repo)
     if state in ("ours", "ours-old"):
         if not dry:
-            dst.unlink()
+            if state == "ours-old":  # edited or older: keep it aside instead of deleting
+                dst.replace(dst.with_name(dst.name + ".bak-agent-brain-harness"))
+            else:
+                dst.unlink()
         return "removed", dst
     return ("absent" if state == "none" else state), dst
 

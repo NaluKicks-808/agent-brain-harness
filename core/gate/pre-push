@@ -14,6 +14,8 @@ step() { printf 'pre-push gate: %s\n' "$*" >&2; }
 # 1. the project's tests
 if [ -f .harness/gate-tests ]; then
   CMD=$(sed -n '1p' .harness/gate-tests)
+elif [ -n "$PY" ] && { [ -f pytest.ini ] || [ -f conftest.py ] || [ -f tests/conftest.py ] || grep -qs 'tool.pytest' pyproject.toml; } && "$PY" -c 'import pytest' 2>/dev/null; then
+  CMD="$PY -m pytest -q"
 elif [ -d tests ] && [ -n "$PY" ]; then
   CMD="$PY -m unittest discover -s tests"
 elif [ -f package.json ] && grep -q '"test"' package.json; then
@@ -26,6 +28,9 @@ fi
 if [ -n "$CMD" ]; then
   step "tests: $CMD"
   OUT=$(sh -c "$CMD" 2>&1) || { printf '%s\n' "$OUT" | tail -25 >&2; fail "tests failed ($CMD)"; }
+  case "$OUT" in
+    *"Ran 0 tests"*|*"no tests ran"*) printf '%s\n' "$OUT" | tail -5 >&2; fail "no tests were found by ($CMD); write tests, or put the right command in .harness/gate-tests" ;;
+  esac
 else
   step "tests: none found (add a command to .harness/gate-tests)"
 fi

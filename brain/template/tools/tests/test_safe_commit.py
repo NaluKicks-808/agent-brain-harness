@@ -68,6 +68,10 @@ class SafeCommitCase(unittest.TestCase):
             dst = self.a / rel
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(str(src), str(dst))
+        readme = self.a / "README.md"
+        if not readme.exists():  # the template has none (init writes one); lint wants every top-level folder named in it
+            readme.write_text("# Test brain\n\n`data/` ledgers. `quiz/` quiz state. `raw/` sources. `tools/` scripts. `wiki/` pages.\n",
+                              encoding="utf-8")
         (self.a / "wiki" / "people" / "pat.md").write_text(PAT, encoding="utf-8")
         idx = self.a / "wiki" / "_index.md"
         idx.write_text(idx.read_text(encoding="utf-8").replace(
