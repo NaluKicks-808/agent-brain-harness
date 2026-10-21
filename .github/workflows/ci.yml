@@ -79,5 +79,37 @@ jobs:
           if (-not (python tools/find.py bike | Select-String 'sam-rivera')) { exit 1 }
           python $h close
           if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Installer (bash)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          export HOME="$(mktemp -d)"
+          sh ./install.sh --dry-run --yes --claude-hook --no-path
+          test -z "$(find "$HOME" -type f)"
+          sh ./install.sh --yes --claude-hook --no-path
+          sh ./install.sh --yes --claude-hook --no-path | grep "Nothing to do"
+          PATH="$HOME/.local/bin:$PATH" agent-brain-harness doctor
+          python "$HOME/.agent-brain-harness/app/install.py" --uninstall --yes
+          test ! -e "$HOME/.agent-brain-harness/manifest.json"
+          test -d "$HOME/agent-brain/wiki"
+      # Not run locally: no PowerShell on the machine this was written on. First CI run on windows-latest is the test.
+      - name: Installer (PowerShell)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $h = Join-Path $env:RUNNER_TEMP 'installhome'
+          New-Item -ItemType Directory -Force $h | Out-Null
+          $env:USERPROFILE = $h; $env:HOME = $h
+          & "$env:GITHUB_WORKSPACE\install.ps1" --dry-run --yes --claude-hook --no-path
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          if (Get-ChildItem $h -Recurse -File) { Write-Error 'dry run wrote files'; exit 1 }
+          & "$env:GITHUB_WORKSPACE\install.ps1" --yes --claude-hook --no-path
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $out = & "$env:GITHUB_WORKSPACE\install.ps1" --yes --claude-hook --no-path | Out-String
+          if ($out -notmatch 'Nothing to do') { Write-Error 'rerun was not a no-op'; exit 1 }
+          python "$h\.agent-brain-harness\app\install.py" --uninstall --yes
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          if (Test-Path "$h\.agent-brain-harness\manifest.json") { Write-Error 'manifest left'; exit 1 }
+          if (-not (Test-Path "$h\agent-brain\wiki")) { Write-Error 'brain was deleted'; exit 1 }
       - name: Leak scan
         run: python scripts/leak_scan.py

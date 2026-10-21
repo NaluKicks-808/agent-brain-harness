@@ -13,6 +13,20 @@ One setup that gives a project two things: a **team** of AI agents (a Manager wh
 - **Brain.** `wiki/` (compiled, cited articles), `raw/` and `data/` (the full-text sources), `tools/` (search, lint, reciprocity check, agenda, safe commit), `CLAUDE.md` (the constitution every agent reads first) and a git `pre-commit` gate that refuses a commit while a link is broken or a fact is written on only one side. The bike-shop example pages are fictional; delete them when you add real sources.
 - **One init.** `harness init` creates both, runs `git init` (unless a repo exists or you pass `--no-git`), makes one first commit, installs the gate, and writes a `README.md` that explains every folder. `--no-brain` gives the team without the brain. It never overwrites a file you already have: it writes `<name>.harness-new` next to it.
 
+## Install
+
+Stub: the README writer expands this section.
+
+macOS and Linux:
+```
+curl -fsSL https://raw.githubusercontent.com/NaluKicks-808/agent-brain-harness/main/install.sh | sh
+```
+Windows (PowerShell):
+```
+irm https://raw.githubusercontent.com/NaluKicks-808/agent-brain-harness/main/install.ps1 | iex
+```
+From a clone: `./install.sh` or `.\install.ps1`. Flags: `--yes` (no questions), `--dry-run` (print every action, change nothing), `--uninstall` (removes only what the installer added, keeps your brain). Transcript of a real run: [docs/install-transcript.txt](docs/install-transcript.txt).
+
 ## Quickstart
 
 Get this repo anywhere (clone or download). Pick your OS, run one init command, then start the Manager in your app.
