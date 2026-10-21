@@ -66,7 +66,7 @@ def agenda(root, *args):
 class Agenda(unittest.TestCase):
     def setUp(self):
         self.root = make_vault()
-        self.addCleanup(shutil.rmtree, self.root)
+        self.addCleanup(shutil.rmtree, self.root, True)
 
     def test_closed_rows_hidden(self):
         _, out = agenda(self.root)
@@ -104,7 +104,7 @@ class Agenda(unittest.TestCase):
 
     def test_missing_ledger_is_reported_not_crash(self):
         root = make_vault(ledger=None)
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         code, out = agenda(root)
         self.assertEqual(code, 0)
         self.assertIn('no ledger', out)

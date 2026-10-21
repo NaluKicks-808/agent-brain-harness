@@ -88,7 +88,7 @@ def fixture():
 class RawCount(unittest.TestCase):
     def setUp(self):
         self.root = make_vault(fixture())
-        self.addCleanup(shutil.rmtree, self.root)
+        self.addCleanup(shutil.rmtree, self.root, True)
         self.code, self.out = run_critic(self.root)
 
     def test_exit_zero_advisory(self):
@@ -109,7 +109,7 @@ class WholeNameAlias(unittest.TestCase):
             'Closer to the coast', 'Short.', extra_fm='aliases:\n  - Coastline\n')
         files['raw/entries/2026-03-01_c.md'] = '---\n---\nWe walked the coastline at dusk.\n'
         root = make_vault(files)
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         _, out = run_critic(root)
         self.assertEqual(raw_refs(out, 'wiki/stories/story-closer-to-the-coast.md'), 1)
 
@@ -126,7 +126,7 @@ class Shape(unittest.TestCase):
                 ['2026-01-01 update', '2026-02-03 update', '2026-03-04 update']),
             'wiki/_index.md': page('Index', '[[stacked]]'),
         })
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         _, out = run_critic(root)
         self.assertIn('wiki/eras/stacked.md', section(out, 5))
 
@@ -135,7 +135,7 @@ class Shape(unittest.TestCase):
             'wiki/eras/article.md': self.long_page(['Background', 'Work', 'Outcome']),
             'wiki/_index.md': page('Index', '[[article]]'),
         })
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         _, out = run_critic(root)
         self.assertNotIn('article.md', section(out, 5))
 
@@ -144,7 +144,7 @@ class Shape(unittest.TestCase):
             'wiki/eras/huge.md': self.long_page(['Background', 'Work', 'Outcome'], words=3300),
             'wiki/_index.md': page('Index', '[[huge]]'),
         })
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         _, out = run_critic(root)
         self.assertIn('wiki/eras/huge.md', section(out, 5))
 
@@ -154,7 +154,7 @@ class Shape(unittest.TestCase):
                 ['2026-01-01', '2026-01-02', '2026-01-03'], words=3300),
             'wiki/_index.md': page('Index', '[[trip-journal]]'),
         })
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         _, out = run_critic(root)
         self.assertNotIn('trip-journal', section(out, 5))
 
@@ -162,7 +162,7 @@ class Shape(unittest.TestCase):
 class NoVaultSpecificDeps(unittest.TestCase):
     def test_runs_standalone_with_no_helper_modules(self):
         root = make_vault({'wiki/_index.md': page('Index', 'Nothing.')})
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         code, out = run_critic(root)
         self.assertEqual(code, 0)
         self.assertNotIn('Traceback', out)

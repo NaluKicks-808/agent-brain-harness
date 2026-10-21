@@ -154,7 +154,7 @@ for fp in glob.glob(os.path.join(WIKI, '**', '*.md'), recursive=True):
     title = tm.group(1).strip() if tm else base
     updated = re.search(r'^updated:\s*(\d{4}-\d{2}-\d{2})', fm, flags=re.M)
     pages[base] = {
-        'rel': os.path.relpath(fp, ROOT), 'text': text, 'fm': fm, 'title': title,
+        'rel': os.path.relpath(fp, ROOT).replace(os.sep, '/'), 'text': text, 'fm': fm, 'title': title,
         'words': len(strip(text).split()),
         'sources': fm_list_count(fm, 'sources'),
         'inbound': 0,

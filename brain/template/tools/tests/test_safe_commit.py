@@ -191,6 +191,7 @@ class CommitFirstRerunPulls(SafeCommitCase):
         self.assertIn("SECOND_BRAIN_COMMIT_BEFORE_PULL=0 ./tools/safe_commit.sh", out)
 
 
+@unittest.skipIf(os.name == "nt", "runs hooks/pre-commit under bash, which on Windows may be WSL's; covered by the Git-for-Windows path in CI via harness commit")
 class PreCommitCrashDetection(unittest.TestCase):
     """hooks/pre-commit reads a crash from a Traceback header at line start, never from the
     word inside an echoed wiki line (review 2026-10-21)."""

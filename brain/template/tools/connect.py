@@ -107,7 +107,7 @@ def session_changes():
 # Every page's full outbound links, so a back-reference can be tested.
 pages, outbound = {}, {}
 for fp in glob.glob(os.path.join(WIKI, '**', '*.md'), recursive=True):
-    pages[os.path.splitext(os.path.basename(fp))[0]] = os.path.relpath(fp, ROOT)
+    pages[os.path.splitext(os.path.basename(fp))[0]] = os.path.relpath(fp, ROOT).replace(os.sep, '/')
 for base, rel in pages.items():
     body = open(os.path.join(ROOT, rel), encoding='utf-8').read()
     outbound[base] = links_in(body)
@@ -270,7 +270,7 @@ def claim_reciprocity():
     edited_set = set(edited)
 
     def pretty(w):
-        return os.path.relpath(w, ROOT) if w.startswith(ROOT) else w
+        return os.path.relpath(w, ROOT).replace(os.sep, '/') if w.startswith(ROOT) else w
 
     def first_line(body, term):
         for ln in body.splitlines():

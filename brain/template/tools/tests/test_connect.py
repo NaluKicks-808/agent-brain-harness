@@ -63,7 +63,7 @@ def run_connect(root):
 class Reciprocity(unittest.TestCase):
     def setUp(self):
         self.root = make_repo()
-        self.addCleanup(shutil.rmtree, self.root)
+        self.addCleanup(shutil.rmtree, self.root, True)
 
     def test_one_way_link_to_person_is_a_gap(self):
         write(self.root, 'wiki/misc/note.md', page('Note', 'Talked with [[ana]] about hours.'))

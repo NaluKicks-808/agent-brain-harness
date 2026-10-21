@@ -383,7 +383,7 @@ def wiki_pages(root, include_all=False):
                 continue
             if not include_all and (name.startswith('_') or name == 'log.md'):
                 continue
-            out.append(os.path.relpath(os.path.join(base, name), root))
+            out.append(os.path.relpath(os.path.join(base, name), root).replace(os.sep, '/'))
     return sorted(out)
 
 
@@ -489,11 +489,11 @@ def check_vault(root=None, pages=None, changed=False, include_all=False, page=No
     source = SourceLayer(root)
     note = ''
     if page is not None:
-        rel = os.path.relpath(os.path.abspath(page), root)
+        rel = os.path.relpath(os.path.abspath(page), root).replace(os.sep, '/')
         # This tool reads the compiled layer only. A --page pointing at an entry or at
         # something outside the brain is refused out loud rather than quietly scanned,
         # because the report's whole meaning is "a wiki page quotes an entry".
-        if rel != 'wiki' and not rel.startswith('wiki' + os.sep):
+        if rel != 'wiki' and not rel.startswith('wiki/'):
             pages = []
             note = '--page must name a file under wiki/, and %s is not' % rel
         else:

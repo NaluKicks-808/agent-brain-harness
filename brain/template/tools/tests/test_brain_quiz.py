@@ -170,7 +170,7 @@ class Quiz(unittest.TestCase):
                 "    print(json.dumps({'results': [{'id': i, 'verdict': 'right', 'stale_suspect': False} for i in ids]}))\n"
                 "else:\n"
                 "    print(json.dumps({'answer': 'stub', 'cites': ['wiki/a.md']}))\n")
-            cmd = "%s %s" % (sys.executable, stub)
+            cmd = '"%s" "%s"' % (sys.executable, stub)
             out = io.StringIO()
             with redirect_stdout(out):
                 code = bq.main(["--root", d, "--answer-cmd", cmd, "--judge-cmd", cmd, "--workers", "1"])

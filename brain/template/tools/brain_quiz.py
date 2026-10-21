@@ -148,7 +148,12 @@ def first_json(text):
 
 def command_caller(cmd, cwd):
     """caller(prompt) -> stdout text. Runs `cmd` with the prompt on stdin."""
-    argv = shlex.split(cmd)
+    if os.name == 'nt':
+        # posix shlex eats the backslashes in C:\paths; keep them, drop the quotes
+        argv = [t[1:-1] if len(t) > 1 and t[0] == t[-1] and t[0] in '"\'' else t
+                for t in shlex.split(cmd, posix=False)]
+    else:
+        argv = shlex.split(cmd)
 
     def call(prompt):
         p = subprocess.run(argv, input=prompt, capture_output=True, text=True,

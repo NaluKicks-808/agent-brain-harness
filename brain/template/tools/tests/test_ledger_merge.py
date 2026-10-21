@@ -91,7 +91,7 @@ class TwoClones(unittest.TestCase):
 
     def register(self, repo):
         self.git(repo, "config", "merge.ledger-rows.driver",
-                 "{} tools/ledger_merge.py %O %A %B".format(sys.executable))
+                 '"{}" tools/ledger_merge.py %O %A %B'.format(sys.executable.replace("\\", "/")))
 
     def add_row(self, repo, row, after=AFTER):
         f = repo / "wiki/_reminders.md"

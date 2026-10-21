@@ -97,7 +97,7 @@ class Ranking(unittest.TestCase):
             'wiki/projects/other.md': '# Other\n\nA brake was mentioned once.\n',
             'wiki/misc/long-notes.md': ledger,
         })
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         code, out = run_find(root, 'brake')
         self.assertEqual(code, 0)
         first = ranked_section(out).splitlines()[0]
@@ -109,7 +109,7 @@ class Ranking(unittest.TestCase):
             'wiki/a/cassette.md': '# Cassette\n\nCassette here.\n',
             'wiki/a/filler.md': '# Filler\n\nNothing of note.\n',
         })
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         _, out = run_find(root, 'cassette')
         self.assertIn('cassette.md', ranked_section(out).splitlines()[0])
 
@@ -118,7 +118,7 @@ class Ranking(unittest.TestCase):
             'wiki/a/page.md': '# Page\n\nTubeless tires.\n',
             'wiki/_reminders.md': '# Reminders\n\nTubeless tires tubeless tires tubeless.\n',
         })
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         _, out = run_find(root, 'tubeless')
         self.assertNotIn('_reminders', ranked_section(out))
         self.assertIn('SYSTEM PAGES', out)
@@ -129,7 +129,7 @@ class Ranking(unittest.TestCase):
             'wiki/a/page.md': '# Page\n\nNothing.\n',
             'wiki/log.md': '# Log\n\nRecorded a flywheel.\n',
         })
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         code, out = run_find(root, 'flywheel')
         self.assertEqual(code, 0)
         self.assertIn('log.md', ranked_section(out))
@@ -145,14 +145,14 @@ class Layers(unittest.TestCase):
 
     def test_default_searches_wiki_only(self):
         root = make_vault(self.FILES)
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         code, out = run_find(root, 'derailleur')
         self.assertEqual(code, 1)
         self.assertIn('--deep', out)
 
     def test_deep_reaches_raw_and_data(self):
         root = make_vault(self.FILES)
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         code, out = run_find(root, '--deep', 'derailleur')
         self.assertEqual(code, 0)
         self.assertIn('raw/entries/2026-01-01_visit.md', out)
@@ -160,7 +160,7 @@ class Layers(unittest.TestCase):
 
     def test_deepfind_is_find_deep(self):
         root = make_vault(self.FILES)
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         shutil.copy(os.path.join(TOOLS, 'deepfind.py'), os.path.join(root, 'tools', 'deepfind.py'))
         p = subprocess.run([sys.executable, os.path.join(root, 'tools', 'deepfind.py'), 'derailleur'],
                            capture_output=True, text=True, cwd=root)
@@ -171,7 +171,7 @@ class Layers(unittest.TestCase):
 class ExitCodes(unittest.TestCase):
     def test_usage_and_help(self):
         root = make_vault({'wiki/a/p.md': '# P\n'})
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         self.assertEqual(run_find(root)[0], 2)
         code, out = run_find(root, '--help')
         self.assertEqual(code, 0)
@@ -179,7 +179,7 @@ class ExitCodes(unittest.TestCase):
 
     def test_works_from_another_cwd_and_without_semantic_layer(self):
         root = make_vault({'wiki/a/p.md': '# P\n\nSprocket.\n'})
-        self.addCleanup(shutil.rmtree, root)
+        self.addCleanup(shutil.rmtree, root, True)
         p = subprocess.run([sys.executable, os.path.join(root, 'tools', 'find.py'), 'sprocket'],
                            capture_output=True, text=True, cwd=tempfile.gettempdir())
         self.assertEqual(p.returncode, 0)

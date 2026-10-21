@@ -79,7 +79,7 @@ SEARCHED = [0]   # files read: BM25's N (how rare a term is across the search)
 
 def label(fp):
     try:
-        return os.path.relpath(fp, ROOT)
+        return os.path.relpath(fp, ROOT).replace(os.sep, '/')
     except ValueError:
         return fp
 
