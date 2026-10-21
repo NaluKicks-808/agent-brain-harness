@@ -361,7 +361,9 @@ def write_launcher(c, path, py):
         text = ("#!/bin/sh\n# %s\nPY=\"%s\"\n[ -x \"$PY\" ] || PY=python3\nexec \"$PY\" \"%s\" \"$@\"\n"
                 % (MARK, py, c.app / "harness.py"))
     if path.is_file():
-        old = path.read_text(encoding="utf-8", errors="replace")
+        # newline="" keeps \r\n as written; read_text would fold it to \n and never match on Windows.
+        with open(str(path), encoding="utf-8", errors="replace", newline="") as f:
+            old = f.read()
         if MARK not in old:
             return "foreign"
         if old == text:
