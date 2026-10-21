@@ -1,4 +1,4 @@
-# agent-harness
+# agent-brain-harness
 
 One setup that gives a project two things: a **team** of AI agents (a Manager who talks to you, Leads who own departments, Workers who do jobs) and a **second brain** (a wiki the team reads before it asks you anything, and writes to when it learns something). The team talks through plain files in `.harness/`, so it works with any LLM app that can read files and run one command.
 
@@ -19,20 +19,20 @@ Get this repo anywhere (clone or download). Pick your OS, run one init command, 
 
 ### macOS
 ```
-bash launchers/macos/harness.sh init ~/my-project
+bash launchers/macos/agent-brain-harness.sh init ~/my-project
 ```
-Or double-click `launchers/macos/harness.command` to check your setup. Python 3 and git ship with the Xcode command line tools; `python3 --version` must say 3.8 or newer.
+Or double-click `launchers/macos/agent-brain-harness.command` to check your setup. Python 3 and git ship with the Xcode command line tools; `python3 --version` must say 3.8 or newer.
 
 ### Linux
 ```
-bash launchers/linux/harness.sh init ~/my-project
+bash launchers/linux/agent-brain-harness.sh init ~/my-project
 ```
 
 ### Windows (PowerShell)
 ```
-powershell -ExecutionPolicy Bypass -File launchers\windows\harness.ps1 init C:\work\my-project
+powershell -ExecutionPolicy Bypass -File launchers\windows\agent-brain-harness.ps1 init C:\work\my-project
 ```
-or in cmd: `launchers\windows\harness.cmd init C:\work\my-project`. Install Python from python.org first (tick "Add to PATH") and Git for Windows (it also provides the bash that `harness commit` uses).
+or in cmd: `launchers\windows\agent-brain-harness.cmd init C:\work\my-project`. Install Python from python.org first (tick "Add to PATH") and Git for Windows (it also provides the bash that `harness commit` uses).
 
 You can always skip the wrappers: `python3 harness.py <command>` (`py harness.py ...` on Windows).
 
@@ -119,7 +119,7 @@ The brain template differs from second-brain-kit in four small ways: `hooks/pre-
 
 Brain tests that do not run on Windows (skipped with a reason in the code): all of `tools/tests/test_safe_commit.py` that drives `safe_commit.sh` (`SafeCommitCase` and its subclasses: it needs POSIX locking and `/dev/null`). Nothing on Windows has been run locally; the CI job is the first run.
 
-The PowerShell and `harness.cmd` launchers, and `--new-window` on Windows and Linux, are exercised only in CI or by hand, not by the unit tests.
+The PowerShell and `agent-brain-harness.cmd` launchers, and `--new-window` on Windows and Linux, are exercised only in CI or by hand, not by the unit tests.
 
 ## License
 

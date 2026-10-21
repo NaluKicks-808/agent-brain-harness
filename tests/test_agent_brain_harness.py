@@ -26,7 +26,7 @@ def h(cwd, *args, check=True):
     return r
 
 
-class HarnessTest(unittest.TestCase):
+class AgentBrainHarnessTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.proj = Path(self.tmp.name) / "my project"
@@ -49,7 +49,7 @@ class HarnessTest(unittest.TestCase):
         h(ROOT, "init", str(self.proj), "--app", "all")
         self.assertEqual((self.proj / "CLAUDE.md").read_text(encoding="utf-8"), "mine\n")
         self.assertTrue((self.proj / "CLAUDE.md.harness-new").is_file())
-        for p in ("AGENTS.md", "GEMINI.md", ".cursor/rules/harness.mdc", ".vscode/tasks.json",
+        for p in ("AGENTS.md", "GEMINI.md", ".cursor/rules/agent-brain-harness.mdc", ".vscode/tasks.json",
                   ".github/copilot-instructions.md", ".claude/settings.example.json"):
             self.assertTrue((self.proj / p).is_file(), p)
         # roles the user edited are kept
@@ -117,11 +117,11 @@ class HarnessTest(unittest.TestCase):
             self.assertNotIn(":", p.name)
 
     def test_launchers_exist(self):
-        for p in ("macos/harness.sh", "macos/harness.command", "linux/harness.sh",
-                  "windows/harness.ps1", "windows/harness.cmd"):
+        for p in ("macos/agent-brain-harness.sh", "macos/agent-brain-harness.command", "linux/agent-brain-harness.sh",
+                  "windows/agent-brain-harness.ps1", "windows/agent-brain-harness.cmd"):
             self.assertTrue((ROOT / "launchers" / p).is_file(), p)
         if os.name == "posix":
-            for p in ("macos/harness.sh", "macos/harness.command", "linux/harness.sh"):
+            for p in ("macos/agent-brain-harness.sh", "macos/agent-brain-harness.command", "linux/agent-brain-harness.sh"):
                 self.assertTrue(os.access(str(ROOT / "launchers" / p), os.X_OK), p)
 
     def test_brain_layout(self):

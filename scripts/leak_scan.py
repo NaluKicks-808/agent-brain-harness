@@ -25,7 +25,7 @@ OK_NAMES = {"<you>", "you", "runner", "runneradmin", "user", "username", "name",
             "yourname", "<username>", "{user}", "$(whoami)", "*"}
 KEYS = [re.compile(p) for p in (r"\bsk-[A-Za-z0-9_-]{16,}", r"\bgh[opsu]_[A-Za-z0-9]{20,}", r"\bAKIA[0-9A-Z]{16}\b")]
 # Public repo URLs the README credits on purpose (repo names only); stripped before the custom-term check.
-OK_URL = re.compile(r"github\.com/NaluKicks-808/(?:second-brain-kit|agent-harness)", re.I)
+OK_URL = re.compile(r"github\.com/NaluKicks-808/(?:second-brain-kit|agent-brain-harness|agent-harness)", re.I)
 # Ordinary English words that collide with a custom term, allowed only inside the brain template
 # (its tools "strike" ledger titles and talk about "fuzzy matching").
 OK_WORDS_IN = (("brain/", ("strike", "y match")),)

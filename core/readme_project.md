@@ -29,7 +29,7 @@ harness send --to lead-build "text"
 harness inbox manager
 ```
 
-`harness` means the launcher script from the agent-harness folder you cloned (or `python3 harness.py`).
+`harness` means the launcher script from the agent-brain-harness folder you cloned (or `python3 harness.py`).
 
 ## Daily loop
 

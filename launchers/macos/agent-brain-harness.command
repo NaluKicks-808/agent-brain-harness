@@ -3,11 +3,11 @@
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 if [ "$#" -eq 0 ]; then
   cd "$HOME" || true
-  bash "$DIR/harness.sh" doctor
+  bash "$DIR/agent-brain-harness.sh" doctor
   echo
-  echo "Run: bash \"$DIR/harness.sh\" init <project-folder>"
+  echo "Run: bash \"$DIR/agent-brain-harness.sh\" init <project-folder>"
   echo "Press Return to close."
   read -r _
 else
-  exec bash "$DIR/harness.sh" "$@"
+  exec bash "$DIR/agent-brain-harness.sh" "$@"
 fi

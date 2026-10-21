@@ -31,19 +31,19 @@ jobs:
         shell: bash
         run: |
           D="$(mktemp -d)"
-          bash launchers/linux/harness.sh init "$D" --leads build
+          bash launchers/linux/agent-brain-harness.sh init "$D" --leads build
           cd "$D"
-          bash "$GITHUB_WORKSPACE/launchers/linux/harness.sh" launch manager --app mock --headless
-          bash "$GITHUB_WORKSPACE/launchers/linux/harness.sh" launch lead --dept build --app mock --headless
-          bash "$GITHUB_WORKSPACE/launchers/linux/harness.sh" inbox manager | grep "lead summary"
-          bash "$GITHUB_WORKSPACE/launchers/linux/harness.sh" close
+          bash "$GITHUB_WORKSPACE/launchers/linux/agent-brain-harness.sh" launch manager --app mock --headless
+          bash "$GITHUB_WORKSPACE/launchers/linux/agent-brain-harness.sh" launch lead --dept build --app mock --headless
+          bash "$GITHUB_WORKSPACE/launchers/linux/agent-brain-harness.sh" inbox manager | grep "lead summary"
+          bash "$GITHUB_WORKSPACE/launchers/linux/agent-brain-harness.sh" close
       # Not run locally (no PowerShell here).
       - name: Launcher round trip (PowerShell)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $d = Join-Path $env:RUNNER_TEMP 'proj'
-          $l = Join-Path $env:GITHUB_WORKSPACE 'launchers\windows\harness.ps1'
+          $l = Join-Path $env:GITHUB_WORKSPACE 'launchers\windows\agent-brain-harness.ps1'
           & $l init $d --leads build
           Set-Location $d
           & $l launch manager --app mock --headless

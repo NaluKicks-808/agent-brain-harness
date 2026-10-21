@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""agent-harness: a portable Manager -> Lead -> Worker file bus for any LLM app.
+"""agent-brain-harness: a portable Manager -> Lead -> Worker file bus for any LLM app.
 
 Python 3.8+, standard library only.
 """
@@ -26,7 +26,7 @@ ADAPTERS = {
     "gemini": [("adapters/gemini/GEMINI.md", "GEMINI.md")],
     "vscode": [
         ("adapters/vscode/.github/copilot-instructions.md", ".github/copilot-instructions.md"),
-        ("adapters/vscode/.cursor/rules/harness.mdc", ".cursor/rules/harness.mdc"),
+        ("adapters/vscode/.cursor/rules/agent-brain-harness.mdc", ".cursor/rules/agent-brain-harness.mdc"),
         ("adapters/vscode/.vscode/tasks.json", ".vscode/tasks.json"),
     ],
 }
@@ -142,7 +142,7 @@ def copy_noclobber(src, dst):
 
 
 GITIGNORE_BLOCK = """
-# agent-harness: machine-local state (the briefs, handoffs and roles in .harness/ stay tracked)
+# agent-brain-harness: machine-local state (the briefs, handoffs and roles in .harness/ stay tracked)
 .harness/inbox/
 .harness/sessions/
 .harness/reports/
@@ -658,7 +658,7 @@ def cmd_commit(a):
 
 
 def build_parser():
-    p = argparse.ArgumentParser(prog="harness", description="Manager -> Lead -> Worker file bus for any LLM app.")
+    p = argparse.ArgumentParser(prog="agent-brain-harness", description="Manager -> Lead -> Worker file bus for any LLM app.")
     sub = p.add_subparsers(dest="cmd")
     s = sub.add_parser("init", help="create .harness workspace")
     s.add_argument("dir", nargs="?")
