@@ -2,6 +2,8 @@ name: ci
 on:
   push:
   pull_request:
+env:
+  PYTHONUTF8: "1"
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -34,6 +36,8 @@ jobs:
           bash "$GITHUB_WORKSPACE/launchers/linux/harness.sh" launch manager --app mock --headless
           bash "$GITHUB_WORKSPACE/launchers/linux/harness.sh" launch lead --dept build --app mock --headless
           bash "$GITHUB_WORKSPACE/launchers/linux/harness.sh" inbox manager | grep "lead summary"
+          bash "$GITHUB_WORKSPACE/launchers/linux/harness.sh" close
+      # Not run locally (no PowerShell here).
       - name: Launcher round trip (PowerShell)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -44,7 +48,36 @@ jobs:
           Set-Location $d
           & $l launch manager --app mock --headless
           & $l launch lead --dept build --app mock --headless
-          & $l inbox manager | Select-String 'lead summary'
+          if (-not (& $l inbox manager | Select-String 'lead summary')) { exit 1 }
+          & $l close
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Brain tools in a fresh project (bash)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          D="$(mktemp -d)/proj"
+          python harness.py init "$D"
+          cd "$D"
+          python -m unittest discover -s tools/tests -v
+          python tools/lint.py
+          python tools/find.py bike | grep sam-rivera
+          python "$GITHUB_WORKSPACE/harness.py" close
+      # Not run locally: no PowerShell on the machine this was written on. First CI run on windows-latest is the test.
+      - name: Brain tools in a fresh project (PowerShell)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $d = Join-Path $env:RUNNER_TEMP 'brainproj'
+          $h = Join-Path $env:GITHUB_WORKSPACE 'harness.py'
+          python $h init $d
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Set-Location $d
+          python -m unittest discover -s tools/tests -v
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          python tools/lint.py
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          if (-not (python tools/find.py bike | Select-String 'sam-rivera')) { exit 1 }
+          python $h close
           if ($LASTEXITCODE -ne 0) { exit 1 }
       - name: Leak scan
         run: python scripts/leak_scan.py

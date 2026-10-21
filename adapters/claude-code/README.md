@@ -1,7 +1,7 @@
 # Claude Code adapter
 
 `harness init --app claude` copies two files into your project:
-- `CLAUDE.md` (a short snippet; an existing file is never overwritten, a `CLAUDE.md.harness-new` is written instead, so merge it by hand).
+- `CLAUDE.md` (a short snippet; an existing file is never overwritten, a `CLAUDE.md.harness-new` is written instead, so merge it by hand). In a project with a brain, `CLAUDE.md` is the brain's constitution and init appends this snippet to it as a "Harness" section instead.
 - `.claude/settings.example.json`: a SessionStart hook that injects the role card by `HARNESS_ROLE`. Copy its `hooks` block into `.claude/settings.json` to enable it. It runs `python3 .harness/hooks/role_card_hook.py` (on Windows use `python` or `py` instead of `python3`).
 
 Launch: `harness launch manager` runs `claude "Read <BOOT.md> and follow it. You are Manager."`. Headless workers run `claude -p` with BOOT.md on stdin.
