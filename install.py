@@ -6,10 +6,12 @@ Python 3.8+, standard library only. Every change is written to a manifest at
 
     python3 install.py [--yes] [--dry-run] [--uninstall] [--dir BRAIN] [--source SRC]
                        [--bin DIR] [--claude-hook | --no-claude-hook] [--no-path] [--no-brain]
+                       [--gate REPO ...]
 """
 import argparse
 import datetime
 import hashlib
+import importlib.util
 import json
 import os
 import platform
@@ -63,7 +65,7 @@ class Ctx:
             return json.loads(self.manifest_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return {"version": 1, "app": None, "launchers": [], "rc_blocks": [], "settings": [],
-                    "brains": [], "win_path": []}
+                    "brains": [], "win_path": [], "gates": []}
 
     def save_manifest(self):
         if self.dry:
@@ -353,6 +355,44 @@ def step_hooks(c, brain):
                                         "; backup: " + backup.name if backup else ""))
 
 
+def load_harness(src):
+    spec = importlib.util.spec_from_file_location("harness_for_install", str(src / "harness.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def step_gate(c, src):
+    c.step("Pre-push gate (optional)")
+    repos = [Path(os.path.expanduser(r)).resolve() for r in (c.a.gate or [])]
+    if not repos:
+        ans = c.ask("Install the pre-push gate (project tests + leak scan before every git push) in a code repo? Folder, or blank to skip", "")
+        if ans:
+            repos = [Path(os.path.expanduser(str(ans))).resolve()]
+    if not repos:
+        c.ok("pre-push gate: not installed. Add it to any repo later with: agent-brain-harness gate install <repo>   (or: install.py --gate <repo>)")
+        return
+    h = load_harness(src)
+    for repo in repos:
+        if not repo.is_dir():
+            c.warn("%s is not a folder; skipped" % repo)
+            continue
+        status, hook = h.gate_install(repo, dry=c.dry)
+        if status == "same":
+            c.ok("pre-push gate already in %s" % hook)
+        elif status == "foreign":
+            c.warn("%s already has a pre-push hook that is not ours; left alone" % hook)
+        elif status == "no-repo":
+            c.warn("%s is not a git repository; skipped" % repo)
+        elif c.dry:
+            c.would("%s the pre-push gate at %s" % ("create" if status == "created" else "update", hook))
+        else:
+            c.did("%s the pre-push gate at %s (skip once with: git push --no-verify)" % (status, hook))
+            entry = {"repo": str(repo), "hook": str(hook)}
+            if entry not in c.manifest.setdefault("gates", []):
+                c.manifest["gates"].append(entry)
+
+
 def write_launcher(c, path, py):
     """Returns 'same', 'created', 'updated' or 'foreign' (someone else's file with that name)."""
     if NT:
@@ -478,7 +518,7 @@ def step_finish(c, brain, bindir):
 # ---------- uninstall ----------
 
 def uninstall(c):
-    c.steps = 6
+    c.steps = 7
     m = c.manifest
     say(paint("1", "agent-brain-harness uninstall") + ("   [dry run: nothing is changed]" if c.dry else ""))
     if not c.manifest_path.is_file():
@@ -565,6 +605,18 @@ def uninstall(c):
             c.did("removed our hook from %s (your other settings untouched; backup kept: %s)" % (f, s.get("backup") or "none"))
     if not m["settings"]:
         c.ok("none was added")
+    c.step("Remove pre-push gates")
+    gates = m.get("gates", [])
+    if gates:
+        h = load_harness(Path(__file__).resolve().parent)
+    for g in gates:
+        status, hook = h.gate_uninstall(Path(g["repo"]), dry=c.dry)
+        if status == "removed":
+            (c.would if c.dry else c.did)("remove the pre-push gate %s" % hook)
+        else:
+            c.ok("no gate of ours left in %s" % g["hook"])
+    if not gates:
+        c.ok("none was installed")
     c.step("Remove the program")
     if c.app.is_dir():
         if c.dry:
@@ -626,6 +678,7 @@ def main(argv=None):
     p.add_argument("--bin", help="where to put the launcher (default ~/.local/bin)")
     p.add_argument("--no-path", action="store_true", help="install the launcher but never edit your PATH or shell rc")
     p.add_argument("--no-brain", action="store_true", help="team only, no second brain")
+    p.add_argument("--gate", action="append", metavar="REPO", help="also install the pre-push gate (tests + leak scan) in this git repo; repeatable")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--claude-hook", dest="claude_hook", action="store_true", default=None)
     g.add_argument("--no-claude-hook", dest="claude_hook", action="store_false")
@@ -633,7 +686,7 @@ def main(argv=None):
     c = Ctx(a)
     if a.uninstall:
         return uninstall(c)
-    c.steps = 8
+    c.steps = 9
     src = Path(a.source).resolve() if a.source else Path(__file__).resolve().parent
     say(paint("1", "agent-brain-harness installer") + ("   [dry run: nothing is changed]" if c.dry else ""))
     say("One setup: a Manager/Lead/Worker team plus a second brain they read first.")
@@ -645,6 +698,7 @@ def main(argv=None):
     step_app(c, src)
     step_init(c, brain)
     step_hooks(c, brain)
+    step_gate(c, src)
     bindir = step_launcher(c)
     step_finish(c, brain, bindir)
     return 0

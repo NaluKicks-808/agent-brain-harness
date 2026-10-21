@@ -61,6 +61,7 @@ jobs:
           python -m unittest discover -s tools/tests -v
           python tools/lint.py
           python tools/find.py bike | grep sam-rivera
+          python "$GITHUB_WORKSPACE/harness.py" doctor
           python "$GITHUB_WORKSPACE/harness.py" close
       # Not run locally: no PowerShell on the machine this was written on. First CI run on windows-latest is the test.
       - name: Brain tools in a fresh project (PowerShell)
@@ -77,6 +78,8 @@ jobs:
           python tools/lint.py
           if ($LASTEXITCODE -ne 0) { exit 1 }
           if (-not (python tools/find.py bike | Select-String 'sam-rivera')) { exit 1 }
+          python $h doctor
+          if ($LASTEXITCODE -ne 0) { exit 1 }
           python $h close
           if ($LASTEXITCODE -ne 0) { exit 1 }
       - name: Installer (bash)
@@ -106,7 +109,7 @@ jobs:
           & "$env:GITHUB_WORKSPACE\install.ps1" --yes --claude-hook --no-path
           if ($LASTEXITCODE -ne 0) { exit 1 }
           if (-not (Test-Path "$h\.agent-brain-harness\manifest.json")) { Write-Error 'install.ps1 installed nothing'; exit 1 }
-          python "$env:GITHUB_WORKSPACE\install.py" --source "$env:GITHUB_WORKSPACE" --yes --claude-hook --no-path *> "$h\rerun.txt"
+          & "$env:GITHUB_WORKSPACE\install.ps1" --yes --claude-hook --no-path *> "$h\rerun.txt"
           Get-Content "$h\rerun.txt"
           if (-not (Select-String -Path "$h\rerun.txt" -Pattern 'Nothing to do' -Quiet)) { Write-Error 'rerun was not a no-op'; exit 1 }
           python "$h\.agent-brain-harness\app\install.py" --uninstall --yes
@@ -115,3 +118,18 @@ jobs:
           if (-not (Test-Path "$h\agent-brain\wiki")) { Write-Error 'brain was deleted'; exit 1 }
       - name: Leak scan
         run: python scripts/leak_scan.py
+  brain-tools:
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.12"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Brain template tool tests (in place)
+        working-directory: brain/template/tools
+        run: python -m unittest discover -s tests -v

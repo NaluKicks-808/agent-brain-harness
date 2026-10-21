@@ -16,7 +16,8 @@ function Fail($msg) { Write-Host "install: $msg" -ForegroundColor Red; exit 1 }
 
 # 1. a Python that is 3.8 or newer
 $py = $null
-foreach ($name in @('py', 'python', 'python3')) {
+# python first: it is the one on PATH (a venv or setup-python), and a rerun must pick the same one; py -3 may pick another install
+foreach ($name in @('python', 'python3', 'py')) {
     $cmd = Get-Command $name -ErrorAction SilentlyContinue
     if (-not $cmd) { continue }
     # [string[]] keeps a one-item list a list: a bare 'if' result collapses to a string, and splatting a string passes its characters

@@ -1,0 +1,50 @@
+#!/bin/sh
+# agent-brain-harness pre-push gate
+# Refuses the push unless the project's tests, the leak scan and (when present) the eval gate pass.
+# Tests: the command in .harness/gate-tests (one line), else guessed (tests/ -> unittest, package.json -> npm test, Makefile test target).
+# Extra leak patterns: set AGENT_BRAIN_HARNESS_LEAK_PATTERNS to a file outside the repo.
+# Skip once, on purpose: git push --no-verify
+ROOT=$(git rev-parse --show-toplevel) || exit 1
+cd "$ROOT" || exit 1
+
+PY=$(command -v python3 || command -v python || true)
+fail() { printf 'pre-push gate: %s\n' "$*" >&2; printf 'pre-push gate: push refused. Fix it, or skip once with: git push --no-verify\n' >&2; exit 1; }
+step() { printf 'pre-push gate: %s\n' "$*" >&2; }
+
+# 1. the project's tests
+if [ -f .harness/gate-tests ]; then
+  CMD=$(sed -n '1p' .harness/gate-tests)
+elif [ -d tests ] && [ -n "$PY" ]; then
+  CMD="$PY -m unittest discover -s tests"
+elif [ -f package.json ] && grep -q '"test"' package.json; then
+  CMD="npm test --silent"
+elif [ -f Makefile ] && grep -q '^test:' Makefile; then
+  CMD="make test"
+else
+  CMD=""
+fi
+if [ -n "$CMD" ]; then
+  step "tests: $CMD"
+  OUT=$(sh -c "$CMD" 2>&1) || { printf '%s\n' "$OUT" | tail -25 >&2; fail "tests failed ($CMD)"; }
+else
+  step "tests: none found (add a command to .harness/gate-tests)"
+fi
+
+# 2. leak scan
+if [ -f scripts/leak_scan.py ] && [ -n "$PY" ]; then
+  step "leak scan"
+  if [ -n "${AGENT_BRAIN_HARNESS_LEAK_PATTERNS:-}" ]; then
+    "$PY" scripts/leak_scan.py --patterns "$AGENT_BRAIN_HARNESS_LEAK_PATTERNS" >&2 || fail "leak scan found something"
+  else
+    "$PY" scripts/leak_scan.py >&2 || fail "leak scan found something"
+  fi
+fi
+
+# 3. eval gate (only when the project has one)
+if [ -f evals/paths.json ] && [ -f evals/eval_gate.py ] && [ -n "$PY" ]; then
+  step "eval gate"
+  "$PY" evals/eval_gate.py check >&2 || fail "eval gate is red"
+fi
+
+step "ok"
+exit 0

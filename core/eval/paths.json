@@ -1,0 +1,4 @@
+{
+  "_comment": "Each suite lists the model-facing files it covers: prompts, role cards, model settings. Edit one and the gate goes red until `eval_gate.py run <suite>` passes again.",
+  "summarizer": ["prompts/summarize.md"]
+}

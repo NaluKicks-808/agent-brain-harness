@@ -98,6 +98,7 @@ class AgentBrainHarnessTest(unittest.TestCase):
         mgr = h(self.proj, "inbox", "manager").stdout
         self.assertIn("lead summary", mgr)
         self.assertIn("hello from worker-demo-1", mgr)
+        self.assertIn("Reviewed by: mock, PASS", mgr)
         self.assertIn("close rc=0", mgr)
         # worker wrote a fact and a ledger row; the brain gates still pass
         self.assertIn("spare tube", (self.proj / "wiki" / "people" / "sam-rivera.md").read_text(encoding="utf-8"))

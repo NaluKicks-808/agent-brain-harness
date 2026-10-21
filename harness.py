@@ -100,9 +100,9 @@ def identity(role, dept=None, job=None):
     if role == "lead":
         d = check_slug(dept or "general", "dept")
         return "lead-" + d, "Lead %s %s" % (DOT, d.capitalize())
-    if role == "worker":
+    if role in ("worker", "reviewer"):
         j = check_slug(job, "job")
-        return "worker-" + j, "Worker %s %s" % (DOT, j)
+        return role + "-" + j, "%s %s %s" % (role.capitalize(), DOT, j)
     die("unknown role %r" % role)
 
 
@@ -271,7 +271,7 @@ def cmd_init(a):
         (ws / "inbox" / ("lead-" + l)).mkdir(parents=True, exist_ok=True)
     if not (ws / "harness.json").exists():
         write(ws / "harness.json", json.dumps(cfg, indent=2) + "\n")
-    for r in ("manager", "lead", "worker"):
+    for r in ("manager", "lead", "worker", "reviewer", "eval-gate"):
         copy_noclobber(SRC / "core" / "roles" / (r + ".md"), ws / "roles" / (r + ".md"))
     for t in (SRC / "core" / "templates").iterdir():
         copy_noclobber(t, ws / "templates" / t.name)
@@ -378,7 +378,10 @@ def make_boot(ws, role, dept=None, job=None, brief=None):
              "Workspace: `%s`" % ws,
              "Harness command: `%s`" % harness_cmd(),
              "Use that command for every `send`, `inbox`, `spawn`, `status` call below.\n",
-             "## Role card\n", role_card(ws, role).rstrip(), "\n## Protocol\n"]
+             "## Role card\n", role_card(ws, role).rstrip()]
+    if role == "lead" and dept == "eval-gate":
+        parts += ["\n## Department card\n", role_card(ws, "eval-gate").rstrip()]
+    parts.append("\n## Protocol\n")
     pp = ws / "PROTOCOL.md"
     parts.append(read(pp if pp.is_file() else SRC / "PROTOCOL.md").rstrip())
     h = ws / "handoffs" / (slug + ".md")
@@ -471,7 +474,7 @@ def run_launch(a, role, dept=None, job=None):
     if not app:
         die("unknown app %r (see harness.json)" % name)
     root = ws.parent
-    if role == "worker":
+    if role in ("worker", "reviewer"):
         parent = getattr(a, "parent", None) or os.environ.get("HARNESS_SLUG") or "manager"
     else:
         parent = "manager" if role == "lead" else None
@@ -531,11 +534,98 @@ def cmd_launch(a):
 
 
 def cmd_spawn(a):
-    a.role = "worker"
+    a.role = a.what
     a.headless = not a.window
     a.new_window = bool(a.window)
     a.dept = None
-    return run_launch(a, "worker", None, a.job)
+    return run_launch(a, a.what, None, a.job)
+
+
+# ---------- pre-push gate and eval kit ----------
+
+GATE_MARK = "agent-brain-harness pre-push gate"
+
+
+def git_hook_path(repo, name):
+    """Where git looks for hooks/<name> in repo, or None (not a repo, or no git)."""
+    if not shutil.which("git"):
+        return None
+    r = subprocess.run(["git", "rev-parse", "--git-path", "hooks/" + name], cwd=str(repo),
+                       capture_output=True, text=True)
+    if r.returncode != 0 or not r.stdout.strip():
+        return None
+    p = Path(r.stdout.strip())
+    return p if p.is_absolute() else Path(repo) / p
+
+
+def gate_template():
+    return (SRC / "core" / "gate" / "pre-push").read_bytes().replace(b"\r\n", b"\n")
+
+
+def gate_state(repo):
+    """(state, path): 'none' | 'ours' | 'ours-old' | 'foreign' | 'no-repo'."""
+    dst = git_hook_path(repo, "pre-push")
+    if dst is None:
+        return "no-repo", None
+    if not dst.is_file():
+        return "none", dst
+    data = dst.read_bytes().replace(b"\r\n", b"\n")
+    if GATE_MARK.encode() not in data:
+        return "foreign", dst
+    return ("ours" if data == gate_template() else "ours-old"), dst
+
+
+def gate_install(repo, dry=False):
+    """Install the pre-push gate. Returns (status, path): created, updated, same, foreign (left alone), no-repo."""
+    state, dst = gate_state(repo)
+    if state in ("no-repo", "foreign"):
+        return state, dst
+    if state == "ours":
+        return "same", dst
+    if not dry:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(gate_template())
+        os.chmod(str(dst), 0o755)
+    return ("created" if state == "none" else "updated"), dst
+
+
+def gate_uninstall(repo, dry=False):
+    state, dst = gate_state(repo)
+    if state in ("ours", "ours-old"):
+        if not dry:
+            dst.unlink()
+        return "removed", dst
+    return ("absent" if state == "none" else state), dst
+
+
+def cmd_gate(a):
+    repo = Path(a.dir or ".").resolve()
+    if a.action == "status":
+        state, dst = gate_state(repo)
+        out("pre-push gate in %s: %s%s" % (repo, state, " (%s)" % dst if dst else ""))
+        return 0 if state in ("ours", "ours-old") else 1
+    fn = gate_install if a.action == "install" else gate_uninstall
+    status, dst = fn(repo)
+    out("pre-push gate %s: %s%s" % (a.action, status, " (%s)" % dst if dst else ""))
+    if status == "foreign":
+        out("a pre-push hook that is not ours is there; left alone. Add the gate to it by hand or remove it first.")
+    if status == "no-repo":
+        out("%s is not a git repository (or git is missing)." % repo)
+    return 1 if status in ("foreign", "no-repo") else 0
+
+
+def cmd_eval_init(a):
+    root = Path(a.dir or ".").resolve()
+    made = 0
+    for src in sorted((SRC / "core" / "eval").rglob("*")):
+        if src.is_file() and "__pycache__" not in src.parts:
+            rel = src.relative_to(SRC / "core" / "eval")
+            res = copy_noclobber(src, root / "evals" / rel)
+            made += res == "created"
+            if res.startswith("new:"):
+                out("exists, wrote %s" % res[4:])
+    out("evals: %d files created in %s. Next: edit evals/paths.json, evals/config.json and the cases (evals/README.md)" % (made, root / "evals"))
+    return 0
 
 
 # ---------- status / doctor ----------
@@ -555,28 +645,183 @@ def cmd_status(a):
     out("last reports: %s" % (", ".join(r.name for r in reps) if reps else "(none)"))
 
 
+def try_ws(start=None):
+    """Like find_ws, but returns None instead of exiting."""
+    env = os.environ.get("HARNESS_DIR")
+    if env and Path(env).is_dir():
+        return Path(env).resolve()
+    cur = Path(start or os.getcwd()).resolve()
+    for d in [cur] + list(cur.parents):
+        if (d / ".harness" / "harness.json").is_file():
+            return d / ".harness"
+    return None
+
+
+CMD_NAME = "agent-brain-harness"  # how fixes name the command; the installer puts it on PATH
+
+
+class Doctor:
+    def __init__(self):
+        self.fixes = 0
+
+    def ok(self, text):
+        out("  ok    " + text)
+
+    def warn(self, text, fix=None):
+        out("  warn  " + text)
+        if fix:
+            out("        fix: " + fix)
+
+    def bad(self, text, fix):
+        self.fixes += 1
+        out("  FIX   " + text)
+        out("        fix: " + fix)
+
+
+def doctor_installer(d):
+    mp = Path(os.path.expanduser("~")) / ".agent-brain-harness" / "manifest.json"
+    if not mp.is_file():
+        return
+    out("installer:")
+    try:
+        m = json.loads(read(mp))
+    except (OSError, ValueError):
+        d.bad("manifest %s is not valid JSON" % mp, "python3 install.py --uninstall, then install again")
+        return
+    app = m.get("app")
+    if app and (Path(app) / "harness.py").is_file():
+        d.ok("program: %s" % app)
+    elif app:
+        d.bad("program missing at %s" % app, "rerun the installer: sh install.sh (or .\\install.ps1)")
+    for l in m.get("launchers", []):
+        if Path(l).is_file():
+            d.ok("launcher: %s" % l)
+        else:
+            d.bad("launcher missing: %s" % l, "rerun the installer")
+    for g in m.get("gates", []):
+        if Path(g.get("hook", "")).is_file():
+            d.ok("pre-push gate: %s" % g["hook"])
+        else:
+            d.bad("pre-push gate missing: %s" % g.get("hook"), "agent-brain-harness gate install %s" % g.get("repo", "<repo>"))
+
+
+def doctor_workspace(d, ws, cfg):
+    root = ws.parent
+    out("workspace: %s" % ws)
+    apps = cfg.get("apps", {})
+    default = cfg.get("default_app")
+    if default in apps:
+        d.ok("default app: %s" % default)
+    else:
+        d.bad("default_app %r is not in apps" % default, "edit %s: set default_app to one of: %s" % (ws / "harness.json", ", ".join(sorted(apps)) or "(none)"))
+    leads = cfg.get("team", {}).get("leads", [])
+    for l in leads:
+        if (ws / "inbox" / ("lead-" + l)).is_dir():
+            continue
+        d.bad("no inbox for lead %r" % l, "mkdir %s" % (ws / "inbox" / ("lead-" + l)))
+    d.ok("leads: %s" % (", ".join(leads) or "(none)"))
+    out("roles:")
+    for r in ("manager", "lead", "worker", "reviewer"):
+        if (ws / "roles" / (r + ".md")).is_file():
+            d.ok("%s.md" % r)
+        else:
+            d.bad("roles/%s.md is missing" % r, "%s init   (adds missing files, overwrites nothing)" % CMD_NAME)
+    lead = ws / "roles" / "lead.md"
+    if lead.is_file() and "Reviewed by" not in read(lead):
+        d.bad("roles/lead.md has no verify step (it predates the reviewer role)",
+              "diff %s %s ; then copy the new text in, or delete roles/lead.md and run init" % (lead, SRC / "core" / "roles" / "lead.md"))
+    if "eval-gate" in leads and not (ws / "roles" / "eval-gate.md").is_file():
+        d.bad("a lead named eval-gate exists but roles/eval-gate.md is missing", "%s init" % CMD_NAME)
+    out("hooks:")
+    hook = ws / "hooks" / "role_card_hook.py"
+    if hook.is_file():
+        d.ok("hooks/role_card_hook.py")
+    else:
+        d.bad("hooks/role_card_hook.py is missing", "%s init" % CMD_NAME)
+    settings = root / ".claude" / "settings.json"
+    if settings.is_file():
+        try:
+            wired = "role_card_hook.py" in json.dumps(json.loads(read(settings)).get("hooks", {}))
+        except ValueError:
+            d.bad("%s is not valid JSON" % settings, "fix or move it, then rerun the installer with --claude-hook")
+            wired = None
+        if wired:
+            d.ok("Claude Code SessionStart hook wired")
+        elif wired is False:
+            d.warn("Claude Code SessionStart hook not wired (optional)", "python3 install.py --claude-hook")
+    else:
+        d.warn("no .claude/settings.json: Claude Code role hook not wired (optional)", "python3 install.py --claude-hook")
+    if has_brain(root):
+        out("brain gates:")
+        pc = git_hook_path(root, "pre-commit")
+        if pc is None:
+            d.bad("%s is not a git repository, so the commit gate cannot run" % root, "git init, then %s init" % CMD_NAME)
+        elif pc.is_file():
+            d.ok("pre-commit gate: %s" % pc)
+        else:
+            d.bad("pre-commit gate is not installed", "%s init   (installs hooks/pre-commit)" % CMD_NAME)
+        for t in ("lint.py", "connect.py", "safe_commit.sh"):
+            if not (root / "tools" / t).is_file():
+                d.bad("tools/%s is missing" % t, "%s init   (restores missing brain files)" % CMD_NAME)
+        if (root / "tools" / "lint.py").is_file():
+            r = subprocess.run([sys.executable, str(root / "tools" / "lint.py")], cwd=str(root), capture_output=True,
+                               text=True, encoding="utf-8", errors="replace", timeout=120)
+            if r.returncode == 0:
+                d.ok("brain lint passes")
+            else:
+                tail = (r.stdout + r.stderr).strip().splitlines()[-1:]
+                d.bad("brain lint fails (%s)" % (tail[0] if tail else "no output"), "python3 tools/lint.py   and fix what it names")
+    else:
+        out("brain: none here (init was run with --no-brain)")
+    out("pre-push gate:")
+    state, path = gate_state(root)
+    if state == "ours":
+        d.ok("installed: %s" % path)
+    elif state == "ours-old":
+        d.warn("installed but older than this harness", "%s gate install %s" % (CMD_NAME, root))
+    elif state == "foreign":
+        d.warn("a pre-push hook that is not ours is installed; the gate does not run", "add the gate by hand (core/gate/pre-push)")
+    elif state == "none":
+        d.warn("not installed (optional: tests + leak scan before every push)", "%s gate install %s" % (CMD_NAME, root))
+    else:
+        d.warn("%s is not a git repository" % root)
+    if (root / "evals" / "eval_gate.py").is_file():
+        r = subprocess.run([sys.executable, str(root / "evals" / "eval_gate.py"), "check"], cwd=str(root),
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
+        if r.returncode == 0:
+            d.ok(r.stdout.strip())
+        else:
+            for line in r.stdout.strip().splitlines():
+                d.bad(line, "python3 evals/eval_gate.py run <suite>")
+
+
 def cmd_doctor(a):
+    d = Doctor()
     out("python: %s" % sys.version.split()[0])
     out("os: %s (%s)" % (sys.platform, os.name))
     if sys.version_info < (3, 8):
-        out("WARNING: python 3.8+ required")
-    try:
-        ws = find_ws()
+        d.bad("python 3.8+ is required", "install Python 3.8 or newer")
+    ws = try_ws(a.dir)
+    if ws:
         cfg = load_cfg(ws)
-    except SystemExit:
+    else:
         cfg = json.loads(read(SRC / "core" / "harness.example.json"))
         out("(no workspace here; checking example config)")
+    out("apps:")
     for name, app in sorted(cfg.get("apps", {}).items()):
         spec = app.get("headless") or app.get("interactive")
         if spec == "print":
             out("  %-8s built in" % name)
             continue
         exe = spec[0]
-        if exe.startswith("{"):
-            found = sys.executable
-        else:
-            found = shutil.which(exe)
+        found = sys.executable if exe.startswith("{") else shutil.which(exe)
         out("  %-8s %s" % (name, found or "NOT on PATH"))
+    doctor_installer(d)
+    if ws:
+        doctor_workspace(d, ws, cfg)
+    out("")
+    out("doctor: %s" % ("all good" if not d.fixes else "%d thing(s) to fix (see FIX lines)" % d.fixes))
+    return 1 if d.fixes else 0
 
 
 # ---------- brain verbs ----------
@@ -705,13 +950,13 @@ def build_parser():
     s.add_argument("--no-git", action="store_true", help="do not run git init or install the commit gate")
     s.set_defaults(fn=cmd_init)
     s = sub.add_parser("boot", help="write BOOT.md, print its path")
-    s.add_argument("role", choices=["manager", "lead", "worker"])
+    s.add_argument("role", choices=["manager", "lead", "worker", "reviewer"])
     s.add_argument("--dept")
     s.add_argument("--job")
     s.add_argument("--brief")
     s.set_defaults(fn=cmd_boot)
     s = sub.add_parser("launch", help="boot, then run the app")
-    s.add_argument("role", choices=["manager", "lead", "worker"])
+    s.add_argument("role", choices=["manager", "lead", "worker", "reviewer"])
     s.add_argument("--dept")
     s.add_argument("--job")
     s.add_argument("--app")
@@ -720,8 +965,8 @@ def build_parser():
     s.add_argument("--brief")
     s.add_argument("--parent")
     s.set_defaults(fn=cmd_launch)
-    s = sub.add_parser("spawn", help="lead: start a worker")
-    s.add_argument("what", choices=["worker"])
+    s = sub.add_parser("spawn", help="lead: start a worker or a reviewer")
+    s.add_argument("what", choices=["worker", "reviewer"])
     s.add_argument("--job", required=True)
     s.add_argument("--brief", required=True)
     s.add_argument("--app")
@@ -755,8 +1000,16 @@ def build_parser():
     s.set_defaults(fn=cmd_postmortem)
     s = sub.add_parser("status")
     s.set_defaults(fn=cmd_status)
-    s = sub.add_parser("doctor")
+    s = sub.add_parser("doctor", help="check hooks, roles, config and brain gates; print fixes")
+    s.add_argument("--dir", help="project folder (default: found from here)")
     s.set_defaults(fn=cmd_doctor)
+    s = sub.add_parser("gate", help="install, remove or check the git pre-push gate (tests + leak scan + eval gate)")
+    s.add_argument("action", choices=["install", "uninstall", "status"])
+    s.add_argument("dir", nargs="?")
+    s.set_defaults(fn=cmd_gate)
+    s = sub.add_parser("eval-init", help="copy the eval gate kit into ./evals")
+    s.add_argument("dir", nargs="?")
+    s.set_defaults(fn=cmd_eval_init)
     return p
 
 

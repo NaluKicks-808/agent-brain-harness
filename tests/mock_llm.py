@@ -35,6 +35,7 @@ def main():
         if m:
             job = m.group(1)
             run("spawn", "worker", "--job", job, "--brief", str(ws / "jobs" / (job + ".md")), "--app", "mock")
+            run("spawn", "reviewer", "--job", job + "-review", "--brief", str(ws / "jobs" / (job + ".md")), "--app", "mock")
             got = run("inbox", slug)
             closed = ""
             if (ws.parent / "wiki").is_dir():
@@ -42,7 +43,9 @@ def main():
                 closed = " close rc=%d." % r.returncode
                 if r.returncode != 0:
                     sys.stderr.write(r.stdout)
-            run("send", "--to", "manager", "lead summary: worker-%s finished.%s\n%s" % (job, closed, got.strip()[-300:]))
+            verdict = "PASS" if "\nPASS\n" in got else "UNVERIFIED"
+            hello = "hello from worker-%s" % job if "hello from worker-%s" % job in got else "no worker report"
+            run("send", "--to", "manager", "lead summary: worker-%s finished.%s\n%s\nReviewed by: mock, %s" % (job, closed, hello, verdict))
             print("- lead: spawned worker-%s and reported to manager" % job)
         else:
             print("- lead: no job found")
@@ -58,6 +61,8 @@ def main():
             with open(str(led), "w", encoding="utf-8", newline="\n") as f:
                 f.write(text.replace("\n\n## Done", "\n" + row.rstrip("\n") + "\n\n## Done", 1))
         print("- worker: finished job, hello from %s" % slug)
+    elif role == "reviewer":
+        print("PASS\n- reviewer: checked the claim, saw the evidence, hello from %s" % slug)
     else:
         print("- unknown role %r" % role)
 

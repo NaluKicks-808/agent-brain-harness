@@ -18,6 +18,7 @@ You talk to one Manager. It hands jobs to Leads, Leads hand them to Workers, and
 [Use it with your app](#use-it-with-your-app) ·
 [Features](#features) ·
 [Daily loop](#the-daily-loop) ·
+[Quality gates](#quality-gates) ·
 [Configuration](#configuration) ·
 [Commands](#commands) ·
 [FAQ](#faq) ·
@@ -184,7 +185,7 @@ Leads and Workers start the same way: `harness launch lead --dept build`, and a 
 
 ## Features
 
-- **A team with clear lanes.** Manager, Lead and Worker each have a role card: what to do, what not to do, how to report. Reports are at most 8 bullets and say what was tested and what was not.
+- **A team with clear lanes.** Manager, Lead, Worker and Reviewer each have a role card: what to do, what not to do, how to report. Reports are at most 8 bullets and say what was tested and what was not.
 - **A second brain.** `wiki/` holds short, cited, linked articles. `raw/entries/` and `data/` keep the full text of every source forever. `harness find` searches the summaries; `tools/deepfind.py` searches the full text when you need the exact words.
 - **Gates.** A git `pre-commit` hook runs `tools/lint.py` (broken links, orphan pages, citations that land nowhere, bad ledger rows) and `tools/connect.py` (a page you named but never updated from its side). Either one refuses the commit.
 - **A closing ritual.** `harness close` runs both gates and exits nonzero on failure. `harness commit "message" <files>` then commits only the files you name, through `tools/safe_commit.sh`, which also keeps several sessions from committing over each other.
@@ -201,6 +202,56 @@ More on the brain's tools and ideas: the `README.md` that init writes into your 
 3. **Agents look first.** Each one runs `harness find <terms>` before asking. Questions for you come only through the Manager.
 4. **Facts land the same session.** A new fact goes onto its wiki page. Anything you owe goes in `wiki/_reminders.md`. Session notes go in `.harness/handoffs/`.
 5. **Close and commit.** `harness close`, then `harness commit "message" <files you edited>`. Reports flow back up: Worker to Lead to Manager to you.
+
+## Quality gates
+
+Three checks keep "done" honest. All are optional except the reviewer step, which is part of the Lead's role card.
+
+### Reviewer: no "done" without a check
+
+A Lead may not tell the Manager a job is done until a **Reviewer** has checked the claim against evidence. The Reviewer is a fresh session with no memory of the work (and it can run on a different model than the Worker). It reads the diff, runs the tests, or looks at the live result, and answers `PASS`, `FAIL` or `UNVERIFIED`.
+
+```sh
+harness spawn reviewer --job j1-review --brief .harness/jobs/j1-review.md
+```
+
+The brief says what is claimed, what the done condition is and where the evidence is. The Lead's summary to the Manager ends with `Reviewed by: <model>, <verdict>`. A `FAIL` goes back to the Worker; an `UNVERIFIED` is never reported as done. The role cards are `.harness/roles/reviewer.md` and the "Verify before you report done" section of `.harness/roles/lead.md`. The Reviewer is for any claim, not only code: a document, a message sent, a change made somewhere else.
+
+### Pre-push gate
+
+A git `pre-push` hook that runs your project's tests and `scripts/leak_scan.py`, and refuses the push if either fails. It also runs `evals/eval_gate.py check` when the project has an eval gate (below).
+
+```sh
+harness gate install ~/code/my-repo    # or: ./install.sh --gate ~/code/my-repo
+harness gate status ~/code/my-repo
+harness gate uninstall ~/code/my-repo
+git push --no-verify                   # skip it once, on purpose
+```
+
+Which tests run: the one-line command in `.harness/gate-tests` if you wrote one, otherwise a guess (`tests/` runs `python -m unittest discover -s tests`, a `package.json` with a test script runs `npm test`, a Makefile `test:` target runs `make test`). The leak scan runs when `scripts/leak_scan.py` exists; point `AGENT_BRAIN_HARNESS_LEAK_PATTERNS` at a file outside the repo to add your own terms. A pre-push hook that is not ours is never overwritten. The installer asks first (default no), supports `--dry-run`, records the hook in its manifest, and `--uninstall` removes only hooks it installed. On Windows the hook runs under the `sh` that comes with Git for Windows.
+
+### Eval gate
+
+For anything that calls a model (a prompt, a role card, a judge), the gate keeps a change from landing without a fresh passing eval. The Lead role for it is `core/roles/eval-gate.md`: start it with `harness launch lead --dept eval-gate`.
+
+```sh
+harness eval-init                          # copies the kit into ./evals
+python3 evals/eval_gate.py run summarizer  # run one suite, write evals/results/summarizer.json
+python3 evals/eval_gate.py check           # offline; exit 1 = red
+```
+
+- `evals/paths.json` lists, per suite, the model-facing files it covers.
+- `evals/<suite>/cases.jsonl` holds golden cases taken from real failures. Code checks (`contains`, `not_contains`, `regex`, `max_chars`) decide first; one optional judge rule per case is asked of `judge_cmd`.
+- The gate is red when a covered file changed since the last run, a suite never ran, the score is 0 (or under `min_score`), or `daily_call_cap` model calls were passed. The cap is the spend limit.
+- `model_cmd` and `judge_cmd` in `evals/config.json` are any command that reads a prompt on standard input and prints the answer, so any LLM app works.
+
+### Doctor
+
+```sh
+harness doctor
+```
+
+Checks that Python is new enough and which apps are on PATH; the installer's launcher and program; `harness.json` (default app, one inbox per Lead); the role cards, including that your `lead.md` has the verify step; the hooks (`role_card_hook.py`, and whether the Claude Code SessionStart hook is wired); the brain gates (pre-commit hook installed, `tools/` present, `lint` passes); the pre-push gate; and the eval gate when there is one. Each problem prints a `FIX` line with the command that repairs it. Exit status is 1 when something needs fixing, 0 otherwise. CI runs it on every OS.
 
 ## Configuration
 
@@ -235,6 +286,7 @@ Use them with `./install.sh`, `.\install.ps1` or `install.py`.
 | `--no-path` | Install the launcher but never edit your PATH or shell rc file. |
 | `--no-brain` | The team only, no second brain. |
 | `--claude-hook` / `--no-claude-hook` | Add (or skip) the Claude Code SessionStart hook in `<brain>/.claude/settings.json`. It shows each agent its role card and does nothing in an ordinary session. Default when asked: no. |
+| `--gate REPO` | Also install the pre-push gate in this git repo. Repeatable. Asked about when you give none and answer at a terminal. |
 | `--uninstall` | Remove what the installer added. Keeps your brain. |
 | `--source PATH` | Install from this checkout instead of the folder the script is in. |
 
@@ -265,7 +317,10 @@ harness boot manager                   # write BOOT.md and print its path, start
 harness send --to lead-build "job: j1, see .harness/jobs/j1.md"
 harness inbox lead-build               # print unread messages, mark them read (--keep)
 harness status                         # unread counts, jobs, last reports
-harness doctor                         # Python version, OS, which apps are on PATH
+harness spawn reviewer --job j1-review --brief .harness/jobs/j1-review.md   # a Lead starts a Reviewer
+harness doctor                         # hooks, roles, config, brain gates; prints a fix for each problem
+harness gate install [REPO]            # git pre-push gate: tests + leak scan (status, uninstall)
+harness eval-init                      # copy the eval gate kit into ./evals
 ```
 
 ### Brain
@@ -321,10 +376,11 @@ It reads the manifest the installer wrote and removes only what the installer ad
 ```sh
 python3 -m unittest discover -s tests -v    # the harness and the installer
 python3 scripts/leak_scan.py                # no personal data in tracked files
+(cd brain/template/tools && python3 -m unittest discover -s tests)   # the brain tools, in place
 python3 harness.py init /tmp/proj && cd /tmp/proj && python3 -m unittest discover -s tools/tests   # the brain tools
 ```
 
-The tests use a fake LLM (`tests/mock_llm.py`) for a full Manager, Lead, Worker round trip: the Worker writes a wiki fact and an agenda row, the Lead runs `harness close`, and the test checks the gates still pass. CI runs all of this on Ubuntu (Python 3.9 and 3.12), macOS and Windows, plus an install, rerun and uninstall in a clean home folder.
+The tests use a fake LLM (`tests/mock_llm.py`) for a full Manager, Lead, Worker round trip: the Worker writes a wiki fact and an agenda row, the Lead runs `harness close`, and the test checks the gates still pass. CI runs all of this on Ubuntu (Python 3.9 and 3.12), macOS and Windows, plus an install, rerun and uninstall in a clean home folder, and a separate job runs the brain tool tests in place.
 
 Issues and pull requests are welcome. Keep it standard library only, and keep every claim in this README true of the code.
 
