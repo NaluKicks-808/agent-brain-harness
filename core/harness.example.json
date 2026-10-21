@@ -1,0 +1,11 @@
+{
+  "apps": {
+    "claude": {"interactive": ["claude", "{kickoff}"], "headless": ["claude", "-p"], "stdin": true},
+    "codex": {"interactive": ["codex", "{kickoff}"], "headless": ["codex", "exec", "-"], "stdin": true},
+    "gemini": {"interactive": ["gemini", "-i", "{kickoff}"], "headless": ["gemini", "-p", ""], "stdin": true},
+    "mock": {"headless": ["{python}", "{root}/tests/mock_llm.py"], "stdin": true},
+    "print": {"interactive": "print"}
+  },
+  "default_app": "claude",
+  "team": {"leads": ["research", "build"]}
+}
