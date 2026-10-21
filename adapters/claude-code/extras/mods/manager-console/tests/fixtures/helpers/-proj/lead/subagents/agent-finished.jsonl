@@ -1,0 +1,3 @@
+{"type":"user","timestamp":"2026-10-13T17:50:00Z","message":{"content":[{"type":"text","text":"Write the review\nLong instructions"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"Finished the review."}],"stop_reason":"end_turn"}}
+{"type":"attachment","message":{"content":"ignored metadata"}}

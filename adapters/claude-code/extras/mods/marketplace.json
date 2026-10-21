@@ -1,0 +1,13 @@
+{
+  "name": "agent-harness-local",
+  "owner": {
+    "name": "the owner"
+  },
+  "plugins": [
+    {
+      "name": "manager-console",
+      "source": "./manager-console",
+      "description": "Manager chat console: questions, team board, status, send cards and inbox alerts. Active only in the session titled Manager."
+    }
+  ]
+}

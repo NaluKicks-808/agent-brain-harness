@@ -1,0 +1,3 @@
+{"type":"user","timestamp":"2026-10-13T17:55:00Z","message":{"content":"Fallback task name\nLong instructions"}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"path":"/example"}}],"stop_reason":"tool_use"}}
+{"type":"user","message":{"content":[{"type":"tool_result","content":"result"}]}}

@@ -1,0 +1,6 @@
+{
+  "name": "manager-console",
+  "version": "0.1.10",
+  "description": "Manager chat console: your-turn band, team board, status line, one-tap send cards and three kinds of alert.",
+  "types": "./types/index.d.ts"
+}

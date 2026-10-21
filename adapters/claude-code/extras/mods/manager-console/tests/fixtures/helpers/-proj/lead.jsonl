@@ -1,0 +1,2 @@
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Agent","id":"call-running","input":{"description":"Check the retry behavior"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"call-running","content":[{"type":"text","text":"Async agent launched successfully.\nagentId: running (internal ID)"}]}]}}
