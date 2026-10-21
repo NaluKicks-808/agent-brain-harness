@@ -203,6 +203,33 @@ class AgentBrainHarnessTest(unittest.TestCase):
         self.assertIn("python:", r.stdout)
         self.assertIn("mock", r.stdout)
 
+    def test_wtfhappened_skill_installed_and_postmortem_passes_lint(self):
+        skill = self.proj / ".claude" / "skills" / "wtfhappened" / "SKILL.md"
+        plain = self.ws / "skills" / "wtfhappened.md"
+        self.assertTrue(skill.is_file() and plain.is_file())
+        body = skill.read_text(encoding="utf-8").split("\n---\n", 1)[1]
+        self.assertIn(body.split("\n", 2)[2].strip()[:200], plain.read_text(encoding="utf-8"))
+        self.assertIn("tools/find.py", skill.read_text(encoding="utf-8"))
+        for a in ("codex/AGENTS.md", "gemini/GEMINI.md", "vscode/.github/copilot-instructions.md"):
+            self.assertIn("wtfhappened", (ROOT / "adapters" / a).read_text(encoding="utf-8"))
+        pm = self.proj / "wiki" / "_postmortems.md"
+        h(self.proj, "postmortem", "a", "sample", "failure")
+        h(self.proj, "postmortem", "second one")
+        text = pm.read_text(encoding="utf-8")
+        self.assertIn("### #2 (", text)
+        self.assertIn("### #3 (", text)
+        with open(str(pm), "a", encoding="utf-8", newline="\n") as fh:
+            fh.write("\n### #4 (2026-10-21): hand-written sample\n\n**What happened.** A sample.\n")
+        r = subprocess.run([sys.executable, str(self.proj / "tools" / "lint.py")], cwd=str(self.proj),
+                           capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(r.returncode, 0, r.stdout[-1500:])
+        self.assertIn("postmortem numbering: 0", r.stdout)
+        with open(str(pm), "a", encoding="utf-8", newline="\n") as fh:
+            fh.write("\n### #4 (2026-10-21): duplicate number\n")
+        r = subprocess.run([sys.executable, str(self.proj / "tools" / "lint.py")], cwd=str(self.proj),
+                           capture_output=True, text=True, encoding="utf-8")
+        self.assertNotEqual(r.returncode, 0)
+
     def test_core_files(self):
         for p in ("README.md", "PROTOCOL.md", "LICENSE", "core/templates/job-brief.md", "core/templates/report.md",
                   "core/templates/handoff.md", "adapters/codex/AGENTS.md", "adapters/gemini/GEMINI.md",

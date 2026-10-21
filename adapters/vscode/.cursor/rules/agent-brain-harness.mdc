@@ -8,3 +8,4 @@ This project may use a Manager, Lead, Worker harness. Protocol: `.harness/PROTOC
 If the user says "Read ... BOOT.md and follow it", open that file and follow it exactly. Use the harness command at its top for `send` and `inbox`. Otherwise ignore the harness.
 
 If this project has a second brain (a `wiki/` folder), read `CLAUDE.md` (the constitution) first, then your role card.
+- When something breaks or a mistake is caught, follow `.harness/skills/wtfhappened.md` (the postmortem), and log it in `wiki/_postmortems.md`.

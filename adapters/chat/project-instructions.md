@@ -19,3 +19,4 @@ Courier workflow:
 1. `harness launch manager --app print` prints BOOT.md. Paste it as your first message.
 2. When the chat gives a `SEND TO` block, save it to a file and run `harness send --from manager --to <slug> --file msg.md`.
 3. To read a role's mail: `harness inbox <slug>`, then paste it into that role's chat.
+- When something breaks or a mistake is caught, follow `.harness/skills/wtfhappened.md` (the postmortem), and log it in `wiki/_postmortems.md`.

@@ -277,6 +277,8 @@ def cmd_init(a):
         copy_noclobber(t, ws / "templates" / t.name)
     copy_noclobber(SRC / "PROTOCOL.md", ws / "PROTOCOL.md")
     copy_noclobber(SRC / "adapters" / "claude-code" / "role_card_hook.py", ws / "hooks" / "role_card_hook.py")
+    copy_noclobber(SRC / "skills" / "wtfhappened" / "wtfhappened.md", ws / "skills" / "wtfhappened.md")
+    copy_noclobber(SRC / "skills" / "wtfhappened" / "SKILL.md", root / ".claude" / "skills" / "wtfhappened" / "SKILL.md")
     (ws / "log.jsonl").touch()
     apps = []
     if a.app == "all":
@@ -627,6 +629,41 @@ def cmd_close(a):
     return rc
 
 
+POSTMORTEM_HEAD = re.compile(r"^#{2,3}[ \t]+#?(\d+)(?:[.:)\s]|$)", re.M)
+POSTMORTEM_BODY = """
+**What happened.** (fill in)
+
+**The class, and its siblings.** (class in one sentence; siblings by number, or "none: searched <terms>")
+
+**Caught by.** (person / automated check / the system itself / luck)
+
+**Why it was caught that way.** (fill in)
+
+**How it was made.** (fill in)
+
+**The systemic gap.** (unused system or missing system)
+
+**The prediction.** (what will or will not happen next if this diagnosis is right)
+
+**Fixes.** (each with how it was tested, or "not yet installed")
+
+**What is still weak.** (fill in)
+"""
+
+
+def cmd_postmortem(a):
+    """Append a numbered entry skeleton to wiki/_postmortems.md. The number is read at write time."""
+    root = brain_root()
+    p = root / "wiki" / "_postmortems.md"
+    text = read(p) if p.is_file() else "---\ntype: ledger\nupdated: %s\n---\n\n# Postmortems\n\n## Entries\n" % datetime.date.today()
+    nums = [int(n) for n in POSTMORTEM_HEAD.findall(text)]
+    n = max(nums) + 1 if nums else 1
+    title = " ".join(a.title).strip() or "untitled"
+    entry = "\n### #%d (%s): %s\n%s" % (n, datetime.date.today(), title, POSTMORTEM_BODY)
+    write(p, text.rstrip("\n") + "\n" + entry)
+    out("postmortem #%d appended to %s. Fill it in, install the fix, then run: close" % (n, p))
+
+
 def find_bash():
     """bash for safe_commit.sh. On Windows, Git's bash (never WSL's System32 bash.exe)."""
     if os.name != "nt":
@@ -713,6 +750,9 @@ def build_parser():
     s.add_argument("message")
     s.add_argument("files", nargs="*")
     s.set_defaults(fn=cmd_commit)
+    s = sub.add_parser("postmortem", help="append a numbered postmortem entry to wiki/_postmortems.md")
+    s.add_argument("title", nargs="+")
+    s.set_defaults(fn=cmd_postmortem)
     s = sub.add_parser("status")
     s.set_defaults(fn=cmd_status)
     s = sub.add_parser("doctor")

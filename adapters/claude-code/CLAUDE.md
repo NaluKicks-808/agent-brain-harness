@@ -6,3 +6,4 @@ This project uses a Manager, Lead, Worker harness (see `.harness/PROTOCOL.md`).
 - Otherwise ignore the harness unless the user asks for it.
 - If this project has a second brain (a `wiki/` folder), read `CLAUDE.md` (the constitution) first, then your role card.
 - Claude Code has native cross-session messaging (SendMessage). You MAY use it, but always also write the file message with `send`.
+- When something breaks or a mistake is caught, run the `wtfhappened` skill (or follow `.harness/skills/wtfhappened.md`), and log it in `wiki/_postmortems.md`.
