@@ -1,0 +1,280 @@
+# agent-brain-harness installer: real run on macOS (Darwin 25.2, arm64, system python 3.9.6), clean temporary HOME.
+# Run from a clone with ./install.sh. Home, source and CLI-shim paths below are shortened to /Users/you/... for the public repo; nothing else is edited.
+
+=== 1. dry run on an empty HOME
+agent-brain-harness installer   [dry run: nothing is changed]
+One setup: a Manager/Lead/Worker team plus a second brain they read first.
+
+[1/8] Detect your system
+      ok  os: Darwin 25.2.0 (arm64)
+      ok  python: 3.9.6 at /usr/bin/python3
+      ok  home: /Users/you
+      ok  dry run: nothing below is changed, every action is only printed
+
+[2/8] Check what is installed
+      ok  git: /usr/bin/git
+      ok  claude (optional): /usr/local/bin/claude
+      ok  codex (optional): /usr/local/bin/codex
+      note  gemini not found (optional). Gemini CLI: npm install -g @google/gemini-cli
+      ok  node (optional): /opt/homebrew/bin/node
+      note  no AI app is required to install. You need at least one to use the team: Claude Code, Codex, Gemini, or a chat app.
+
+[3/8] Choose the folder for your team and second brain
+      Brain folder [/Users/you/agent-brain]: using the default
+      ok  brain folder: /Users/you/agent-brain
+
+[4/8] Install the harness program
+      ok  source: /Users/you/src/agent-brain-harness
+      would  copy the program into /Users/you/.agent-brain-harness/app
+
+[5/8] Create the team and the second brain
+      would  run: /usr/bin/python3 /Users/you/.agent-brain-harness/app/harness.py init /Users/you/agent-brain
+
+[6/8] Wire the hooks
+      ok  git pre-commit gate: init installs it in /Users/you/agent-brain/.git/hooks/
+      would  create /Users/you/agent-brain/.claude/settings.json (backup first)
+
+[7/8] Put the launcher on your PATH
+      Install the `agent-brain-harness` command in ~/.local/bin [Y/n]: using the default
+      would  create launcher /Users/you/.local/bin/agent-brain-harness
+      would  create launcher /Users/you/.local/bin/harness
+      ~/.local/bin is not on your PATH. Add it to ~/.zshrc [Y/n]: using the default
+      would  append a marked PATH block to /Users/you/.zshrc
+
+[8/8] Finish
+      dry run complete: nothing was changed.
+
+After a real install, next 3 things:
+  1. Start the Manager:      cd "/Users/you/agent-brain" && agent-brain-harness launch manager
+     (new terminal first if the command is not found; other apps: add --app codex or --app gemini)
+  2. Ask it for something. It hands jobs to Leads and Workers, and looks in the brain before it asks you.
+  3. Make the brain yours: replace the fictional bike-shop pages in wiki/ and raw/, then run: agent-brain-harness close
+
+exit=0 files_created=0
+
+=== 2. install (--yes --claude-hook)
+agent-brain-harness installer
+One setup: a Manager/Lead/Worker team plus a second brain they read first.
+
+[1/8] Detect your system
+      ok  os: Darwin 25.2.0 (arm64)
+      ok  python: 3.9.6 at /usr/bin/python3
+      ok  home: /Users/you
+
+[2/8] Check what is installed
+      ok  git: /usr/bin/git
+      ok  claude (optional): /usr/local/bin/claude
+      ok  codex (optional): /usr/local/bin/codex
+      note  gemini not found (optional). Gemini CLI: npm install -g @google/gemini-cli
+      ok  node (optional): /opt/homebrew/bin/node
+      note  no AI app is required to install. You need at least one to use the team: Claude Code, Codex, Gemini, or a chat app.
+
+[3/8] Choose the folder for your team and second brain
+      Brain folder [/Users/you/agent-brain]: using the default
+      ok  brain folder: /Users/you/agent-brain
+
+[4/8] Install the harness program
+      ok  source: /Users/you/src/agent-brain-harness
+      done  copied: program is at /Users/you/.agent-brain-harness/app
+
+[5/8] Create the team and the second brain
+      | brain: 39 files created; commit gate: installed at /Users/you/agent-brain/.git/hooks/pre-commit
+      | workspace: /Users/you/agent-brain/.harness
+      | adapters: claude, codex
+      | next: "/usr/bin/python3" "/Users/you/.agent-brain-harness/app/harness.py" launch manager
+      done  created the team (.harness/) and the brain in /Users/you/agent-brain
+
+[6/8] Wire the hooks
+      ok  git pre-commit gate: installed at /Users/you/agent-brain/.git/hooks/pre-commit (blocks a commit while lint fails)
+      done  Claude Code hook written to /Users/you/agent-brain/.claude/settings.json
+
+[7/8] Put the launcher on your PATH
+      Install the `agent-brain-harness` command in ~/.local/bin [Y/n]: using the default
+      done  created launcher /Users/you/.local/bin/agent-brain-harness
+      done  created launcher /Users/you/.local/bin/harness
+      ~/.local/bin is not on your PATH. Add it to ~/.zshrc [Y/n]: using the default
+      done  added a marked PATH block to /Users/you/.zshrc (open a new terminal to use it)
+
+[8/8] Finish
+      ok  manifest: /Users/you/.agent-brain-harness/manifest.json (uninstall reads it)
+
+You're set. Next 3 things:
+  1. Start the Manager:      cd "/Users/you/agent-brain" && /Users/you/.local/bin/agent-brain-harness launch manager
+     (new terminal first if the command is not found; other apps: add --app codex or --app gemini)
+  2. Ask it for something. It hands jobs to Leads and Workers, and looks in the brain before it asks you.
+  3. Make the brain yours: replace the fictional bike-shop pages in wiki/ and raw/, then run: /Users/you/.local/bin/agent-brain-harness close
+
+Undo everything: python3 /Users/you/.agent-brain-harness/app/install.py --uninstall   (your brain folder is kept unless you type its name to delete it)
+exit=0
+
+=== 3. rerun (idempotent)
+agent-brain-harness installer
+One setup: a Manager/Lead/Worker team plus a second brain they read first.
+
+[1/8] Detect your system
+      ok  os: Darwin 25.2.0 (arm64)
+      ok  python: 3.9.6 at /usr/bin/python3
+      ok  home: /Users/you
+
+[2/8] Check what is installed
+      ok  git: /usr/bin/git
+      ok  claude (optional): /usr/local/bin/claude
+      ok  codex (optional): /usr/local/bin/codex
+      note  gemini not found (optional). Gemini CLI: npm install -g @google/gemini-cli
+      ok  node (optional): /opt/homebrew/bin/node
+      note  no AI app is required to install. You need at least one to use the team: Claude Code, Codex, Gemini, or a chat app.
+
+[3/8] Choose the folder for your team and second brain
+      Brain folder [/Users/you/agent-brain]: using the default
+      ok  brain folder: /Users/you/agent-brain
+
+[4/8] Install the harness program
+      ok  source: /Users/you/src/agent-brain-harness
+      ok  already installed at /Users/you/.agent-brain-harness/app, identical
+
+[5/8] Create the team and the second brain
+      ok  already initialised: /Users/you/agent-brain
+
+[6/8] Wire the hooks
+      ok  git pre-commit gate: installed at /Users/you/agent-brain/.git/hooks/pre-commit (blocks a commit while lint fails)
+      ok  Claude Code hook: already in /Users/you/agent-brain/.claude/settings.json
+
+[7/8] Put the launcher on your PATH
+      Install the `agent-brain-harness` command in ~/.local/bin [Y/n]: using the default
+      ok  launcher /Users/you/.local/bin/agent-brain-harness: already there
+      ok  launcher /Users/you/.local/bin/harness: already there
+      ok  PATH line already in /Users/you/.zshrc
+
+[8/8] Finish
+      Nothing to do: already installed and up to date.
+      ok  manifest: /Users/you/.agent-brain-harness/manifest.json (uninstall reads it)
+
+You're set. Next 3 things:
+  1. Start the Manager:      cd "/Users/you/agent-brain" && /Users/you/.local/bin/agent-brain-harness launch manager
+     (new terminal first if the command is not found; other apps: add --app codex or --app gemini)
+  2. Ask it for something. It hands jobs to Leads and Workers, and looks in the brain before it asks you.
+  3. Make the brain yours: replace the fictional bike-shop pages in wiki/ and raw/, then run: /Users/you/.local/bin/agent-brain-harness close
+
+Undo everything: python3 /Users/you/.agent-brain-harness/app/install.py --uninstall   (your brain folder is kept unless you type its name to delete it)
+exit=0 unchanged=yes
+
+=== 4. dry run on the installed HOME
+agent-brain-harness installer   [dry run: nothing is changed]
+One setup: a Manager/Lead/Worker team plus a second brain they read first.
+
+[1/8] Detect your system
+      ok  os: Darwin 25.2.0 (arm64)
+      ok  python: 3.9.6 at /usr/bin/python3
+      ok  home: /Users/you
+      ok  dry run: nothing below is changed, every action is only printed
+
+[2/8] Check what is installed
+      ok  git: /usr/bin/git
+      ok  claude (optional): /usr/local/bin/claude
+      ok  codex (optional): /usr/local/bin/codex
+      note  gemini not found (optional). Gemini CLI: npm install -g @google/gemini-cli
+      ok  node (optional): /opt/homebrew/bin/node
+      note  no AI app is required to install. You need at least one to use the team: Claude Code, Codex, Gemini, or a chat app.
+
+[3/8] Choose the folder for your team and second brain
+      Brain folder [/Users/you/agent-brain]: using the default
+      ok  brain folder: /Users/you/agent-brain
+
+[4/8] Install the harness program
+      ok  source: /Users/you/src/agent-brain-harness
+      ok  already installed at /Users/you/.agent-brain-harness/app, identical
+
+[5/8] Create the team and the second brain
+      ok  already initialised: /Users/you/agent-brain
+
+[6/8] Wire the hooks
+      ok  git pre-commit gate: installed at /Users/you/agent-brain/.git/hooks/pre-commit (blocks a commit while lint fails)
+      ok  Claude Code hook: already in /Users/you/agent-brain/.claude/settings.json
+
+[7/8] Put the launcher on your PATH
+      Install the `agent-brain-harness` command in ~/.local/bin [Y/n]: using the default
+      ok  launcher /Users/you/.local/bin/agent-brain-harness: already there
+      ok  launcher /Users/you/.local/bin/harness: already there
+      ok  PATH line already in /Users/you/.zshrc
+
+[8/8] Finish
+      dry run complete: nothing was changed.
+
+After a real install, next 3 things:
+  1. Start the Manager:      cd "/Users/you/agent-brain" && agent-brain-harness launch manager
+     (new terminal first if the command is not found; other apps: add --app codex or --app gemini)
+  2. Ask it for something. It hands jobs to Leads and Workers, and looks in the brain before it asks you.
+  3. Make the brain yours: replace the fictional bike-shop pages in wiki/ and raw/, then run: agent-brain-harness close
+
+exit=0 unchanged=yes
+
+=== 5. the launcher works
+python: 3.9.6
+os: darwin (posix)
+harness: no .harness workspace found; run: harness init
+workspace: /Users/you/agent-brain/.harness
+default app: claude
+inboxes (unread):
+
+=== 6. uninstall --dry-run
+agent-brain-harness uninstall   [dry run: nothing is changed]
+
+[1/6] Remove launchers
+      would  remove /Users/you/.local/bin/agent-brain-harness
+      would  remove /Users/you/.local/bin/harness
+
+[2/6] Remove PATH edits
+      would  remove the marked block from /Users/you/.zshrc
+
+[3/6] Remove the Claude Code hook
+      would  remove our hook from /Users/you/agent-brain/.claude/settings.json
+
+[4/6] Remove the program
+      would  remove /Users/you/.agent-brain-harness/app
+
+[5/6] Your brain folders
+      ok  kept: /Users/you/agent-brain
+
+[6/6] Remove the manifest
+      would  remove /Users/you/.agent-brain-harness/manifest.json
+
+Dry run complete: nothing was changed.
+exit=0 unchanged=yes
+
+=== 7. uninstall
+agent-brain-harness uninstall
+
+[1/6] Remove launchers
+      done  removed /Users/you/.local/bin/agent-brain-harness
+      done  removed /Users/you/.local/bin/harness
+
+[2/6] Remove PATH edits
+      done  removed /Users/you/.zshrc (it held only our block)
+
+[3/6] Remove the Claude Code hook
+      done  removed /Users/you/agent-brain/.claude/settings.json (we created it and it is now empty)
+
+[4/6] Remove the program
+      done  removed /Users/you/.agent-brain-harness/app
+
+[5/6] Your brain folders
+      ok  kept: /Users/you/agent-brain
+
+[6/6] Remove the manifest
+      done  removed /Users/you/.agent-brain-harness/manifest.json
+
+Uninstalled.
+exit=0
+
+=== 8. what is left
+home: agent-brain 
+brain kept: AGENTS.md CLAUDE.md data hooks quiz raw README.md tools wiki 
+.zshrc: removed, held only our block
+ls: /Users/you/.local/bin: No such file or directory
+.local/bin: 0 files
+claude settings.json: removed
+
+=== 9. uninstall again
+agent-brain-harness uninstall
+
+Nothing to uninstall: no manifest at /Users/you/.agent-brain-harness/manifest.json.
