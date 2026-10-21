@@ -106,7 +106,7 @@ jobs:
           & "$env:GITHUB_WORKSPACE\install.ps1" --yes --claude-hook --no-path
           if ($LASTEXITCODE -ne 0) { exit 1 }
           $out = & "$env:GITHUB_WORKSPACE\install.ps1" --yes --claude-hook --no-path | Out-String
-          if ($out -notmatch 'Nothing to do') { Write-Error 'rerun was not a no-op'; exit 1 }
+          if ($out -notmatch 'Nothing to do') { Write-Output $out; Write-Error 'rerun was not a no-op'; exit 1 }
           python "$h\.agent-brain-harness\app\install.py" --uninstall --yes
           if ($LASTEXITCODE -ne 0) { exit 1 }
           if (Test-Path "$h\.agent-brain-harness\manifest.json") { Write-Error 'manifest left'; exit 1 }
