@@ -24,6 +24,11 @@ OK_NAMES = {"<you>", "you", "runner", "runneradmin", "user", "username", "name",
             "$user", "%username%", "shared", "public", "default", "$home", "~", "me", "your-name",
             "yourname", "<username>", "{user}", "$(whoami)", "*"}
 KEYS = [re.compile(p) for p in (r"\bsk-[A-Za-z0-9_-]{16,}", r"\bgh[opsu]_[A-Za-z0-9]{20,}", r"\bAKIA[0-9A-Z]{16}\b")]
+# Public repo URLs the README credits on purpose (repo names only); stripped before the custom-term check.
+OK_URL = re.compile(r"github\.com/NaluKicks-808/(?:second-brain-kit|agent-harness)", re.I)
+# Ordinary English words that collide with a custom term, allowed only inside the brain template
+# (its tools "strike" ledger titles and talk about "fuzzy matching").
+OK_WORDS_IN = (("brain/", ("strike", "y match")),)
 SKIP_DIRS = {".git", "node_modules", "__pycache__"}
 SKIP_SUFFIX = {".png", ".jpg", ".jpeg", ".gif", ".wav", ".mp3", ".ico", ".pdf", ".zip", ".pyc", ".woff", ".woff2"}
 
@@ -65,7 +70,11 @@ def main():
             continue
         rel = p.relative_to(ROOT)
         for n, line in enumerate(text.splitlines(), 1):
-            low = line.lower()
+            low = OK_URL.sub("", line).lower()
+            for pre, words in OK_WORDS_IN:
+                if str(rel).replace("\\", "/").startswith(pre):
+                    for w in words:
+                        low = low.replace(w, "")
             for m in EMAIL.finditer(line):
                 if not m.group(1).lower().endswith(OK_EMAIL_DOMAINS):
                     hits.append((rel, n, "email"))

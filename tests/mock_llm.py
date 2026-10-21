@@ -36,11 +36,27 @@ def main():
             job = m.group(1)
             run("spawn", "worker", "--job", job, "--brief", str(ws / "jobs" / (job + ".md")), "--app", "mock")
             got = run("inbox", slug)
-            run("send", "--to", "manager", "lead summary: worker-%s finished.\n%s" % (job, got.strip()[-300:]))
+            closed = ""
+            if (ws.parent / "wiki").is_dir():
+                r = subprocess.run(H + ["close"], capture_output=True, text=True, encoding="utf-8")
+                closed = " close rc=%d." % r.returncode
+                if r.returncode != 0:
+                    sys.stderr.write(r.stdout)
+            run("send", "--to", "manager", "lead summary: worker-%s finished.%s\n%s" % (job, closed, got.strip()[-300:]))
             print("- lead: spawned worker-%s and reported to manager" % job)
         else:
             print("- lead: no job found")
     elif role == "worker":
+        root = ws.parent
+        if (root / "wiki").is_dir():
+            page = root / "wiki" / "people" / "sam-rivera.md"
+            with open(str(page), "a", encoding="utf-8", newline="\n") as f:
+                f.write("\nSam keeps a spare tube in every toolbox (added by %s).\n" % slug)
+            led = root / "wiki" / "_reminders.md"
+            text = led.read_text(encoding="utf-8")
+            row = "| 2026-12-01 | Date | Confirm the %s spare-tube fact with Sam | Mock worker round trip |\n" % slug
+            with open(str(led), "w", encoding="utf-8", newline="\n") as f:
+                f.write(text.replace("\n\n## Done", "\n" + row.rstrip("\n") + "\n\n## Done", 1))
         print("- worker: finished job, hello from %s" % slug)
     else:
         print("- unknown role %r" % role)

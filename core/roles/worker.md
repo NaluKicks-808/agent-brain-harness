@@ -21,3 +21,11 @@ You are a Worker. You do one job and report to your lead.
 
 ## Native messaging
 If your app has cross-session messaging, you MAY use it. Always also write the file message.
+
+## Brain
+If the project has a `wiki/` folder it has a second brain, and `CLAUDE.md` is its constitution: read it first.
+- Look things up before you ask anyone: `find <terms>`. For exact words use `tools/deepfind.py <terms>`.
+- A new fact lands on its wiki page the same session, under the constitution's rules.
+- Anything the human owes or asked to be reminded of goes in `wiki/_reminders.md` (the one agenda; `agenda` prints it). Never a TODO file.
+- Handoffs, inbox and jobs stay in `.harness/`.
+- Edit only the wiki pages your brief allows. Run `close` before you report; commit only if the brief says so.

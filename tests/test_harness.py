@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -97,6 +98,12 @@ class HarnessTest(unittest.TestCase):
         mgr = h(self.proj, "inbox", "manager").stdout
         self.assertIn("lead summary", mgr)
         self.assertIn("hello from worker-demo-1", mgr)
+        self.assertIn("close rc=0", mgr)
+        # worker wrote a fact and a ledger row; the brain gates still pass
+        self.assertIn("spare tube", (self.proj / "wiki" / "people" / "sam-rivera.md").read_text(encoding="utf-8"))
+        self.assertIn("worker-demo-1 spare-tube", (self.proj / "wiki" / "_reminders.md").read_text(encoding="utf-8"))
+        self.assertIn("spare-tube", h(self.proj, "agenda").stdout)
+        self.assertEqual(h(self.proj, "close", check=False).returncode, 0)
         self.assertIn("manager", h(self.proj, "status").stdout)
         events = [json.loads(l)["event"] for l in (self.ws / "log.jsonl").read_text(encoding="utf-8").splitlines()]
         self.assertIn("report", events)
@@ -117,6 +124,80 @@ class HarnessTest(unittest.TestCase):
             for p in ("macos/harness.sh", "macos/harness.command", "linux/harness.sh"):
                 self.assertTrue(os.access(str(ROOT / "launchers" / p), os.X_OK), p)
 
+    def test_brain_layout(self):
+        for p in ("CLAUDE.md", "README.md", ".gitignore", ".gitattributes", "hooks/pre-commit", "tools/lint.py",
+                  "tools/find.py", "tools/safe_commit.sh", "tools/tests/test_lint.py", "wiki/_reminders.md",
+                  "raw/entries/2026-09-12_shop-visit-notes.md", "data/README.md", "quiz/questions.example.jsonl",
+                  ".claude/rules/wiki-writing.md", ".obsidian/graph.json", ".git/hooks/pre-commit"):
+            self.assertTrue((self.proj / p).exists(), p)
+        self.assertFalse((self.proj / "LICENSE").exists())
+        claude = (self.proj / "CLAUDE.md").read_text(encoding="utf-8")
+        self.assertIn("# The constitution", claude)
+        self.assertIn("## Harness", claude)
+        self.assertIn(".harness/roles/", claude)
+        readme = (self.proj / "README.md").read_text(encoding="utf-8")
+        self.assertIn("`.harness/`", readme)
+        self.assertIn("second-brain-kit", readme)
+        self.assertNotIn("{{", readme)
+        if os.name == "posix":
+            self.assertTrue(os.access(str(self.proj / "tools" / "safe_commit.sh"), os.X_OK))
+            self.assertTrue(os.access(str(self.proj / ".git" / "hooks" / "pre-commit"), os.X_OK))
+
+    def test_brain_gates_clean_after_init(self):
+        r = subprocess.run([sys.executable, "tools/lint.py"], cwd=str(self.proj), capture_output=True,
+                           text=True, encoding="utf-8")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("sam-rivera", h(self.proj, "find", "bike").stdout)
+        self.assertIn("tune-up", h(self.proj, "agenda").stdout)
+
+    def test_close_fails_on_broken_link(self):
+        page = self.proj / "wiki" / "people" / "sam-rivera.md"
+        page.write_text(page.read_text(encoding="utf-8") + "\nSee [[no-such-page]].\n", encoding="utf-8")
+        r = h(self.proj, "close", check=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("CLOSE FAILED", r.stdout)
+
+    def test_boot_has_brain_and_agenda(self):
+        bp = Path(h(self.proj, "boot", "manager").stdout.strip())
+        text = bp.read_text(encoding="utf-8")
+        self.assertIn("## Brain", text)
+        self.assertIn("## Open agenda", text)
+        self.assertIn("tune-up", text)
+
+    def test_no_brain(self):
+        p = Path(self.tmp.name) / "plain"
+        h(ROOT, "init", str(p), "--no-brain")
+        self.assertTrue((p / ".harness" / "harness.json").is_file())
+        for n in ("wiki", "tools", "hooks", "README.md", ".git"):
+            self.assertFalse((p / n).exists(), n)
+        r = h(p, "find", "bike", check=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("no brain", r.stderr)
+        self.assertNotIn("## Open agenda", Path(h(p, "boot", "manager").stdout.strip()).read_text(encoding="utf-8"))
+
+    def test_no_git_and_existing_files_kept(self):
+        p = Path(self.tmp.name) / "nogit"
+        p.mkdir()
+        (p / "README.md").write_text("mine\n", encoding="utf-8")
+        h(ROOT, "init", str(p), "--no-git")
+        self.assertFalse((p / ".git").exists())
+        self.assertEqual((p / "README.md").read_text(encoding="utf-8"), "mine\n")
+        self.assertTrue((p / "README.md.harness-new").is_file())
+
+    @unittest.skipUnless(shutil.which("bash") and os.name == "posix", "needs POSIX bash")
+    def test_commit_verb(self):
+        env = clean_env()
+        env.update({"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
+                    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com",
+                    "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull})
+        page = self.proj / "wiki" / "people" / "sam-rivera.md"
+        page.write_text(page.read_text(encoding="utf-8") + "\nSam rides a blue bike.\n", encoding="utf-8")
+        r = subprocess.run([sys.executable, HARNESS, "commit", "--all", "test commit"], cwd=str(self.proj),
+                           capture_output=True, text=True, encoding="utf-8", env=env)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        log = subprocess.run(["git", "log", "--oneline"], cwd=str(self.proj), capture_output=True, text=True, env=env)
+        self.assertIn("test commit", log.stdout)
+
     def test_doctor(self):
         r = h(self.proj, "doctor")
         self.assertIn("python:", r.stdout)
@@ -126,7 +207,7 @@ class HarnessTest(unittest.TestCase):
         for p in ("README.md", "PROTOCOL.md", "LICENSE", "core/templates/job-brief.md", "core/templates/report.md",
                   "core/templates/handoff.md", "adapters/codex/AGENTS.md", "adapters/gemini/GEMINI.md",
                   "adapters/chat/project-instructions.md", "adapters/terminal/README.md",
-                  "adapters/claude-code/README.md", "scripts/leak_scan.py", ".github/workflows/ci.yml"):
+                  "adapters/claude-code/README.md", "brain/readme_brain.md", "brain/template/CLAUDE.md", "core/readme_project.md", "scripts/leak_scan.py", ".github/workflows/ci.yml"):
             self.assertTrue((ROOT / p).is_file(), p)
         for r in ("manager", "lead", "worker"):
             n = len((ROOT / "core" / "roles" / (r + ".md")).read_text(encoding="utf-8").splitlines())
